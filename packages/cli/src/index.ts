@@ -41,9 +41,19 @@ async function loadScenario(path: string) {
 }
 
 async function loadArtifact(contract: string) {
-  const path = resolve(`examples/monad-erc20-demo/out/${contract}.sol/${contract}.json`);
-  const artifact = JSON.parse(await readFile(path, 'utf8'));
-  return { abi: artifact.abi, bytecode: artifact.bytecode.object as Hex };
+  const paths = [
+    resolve(`examples/monad-erc20-demo/out/${contract}.sol/${contract}.json`),
+    resolve(`examples/monad-erc721-demo/out/${contract}.sol/${contract}.json`)
+  ];
+  for (const path of paths) {
+    try {
+      const artifact = JSON.parse(await readFile(path, 'utf8'));
+      return { abi: artifact.abi, bytecode: artifact.bytecode.object as Hex };
+    } catch {
+      // Try the next example contract location.
+    }
+  }
+  throw new Error(`Artifact not found for contract ${contract}. Build the matching Foundry example first.`);
 }
 
 const [command, ...rest] = process.argv.slice(2);

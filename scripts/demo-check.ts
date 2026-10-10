@@ -28,6 +28,7 @@ async function main() {
 
   for (const path of [
     'apps/web/public/results/happy-path.json',
+    'apps/web/public/results/erc721-happy.json',
     'apps/web/public/results/buggy-mint.json',
     'apps/web/public/results/skipped.json',
     'apps/web/public/results/malformed.json',

@@ -6,6 +6,7 @@ import { replaySequence, validateResult, type RunResult } from './viewer.js';
 const fixtures = [
   { label: 'Buggy mint', file: '/results/buggy-mint.json' },
   { label: 'Happy path', file: '/results/happy-path.json' },
+  { label: 'ERC-721 mint', file: '/results/erc721-happy.json' },
   { label: 'Skipped node', file: '/results/skipped.json' },
   { label: 'Malformed', file: '/results/malformed.json' }
 ];

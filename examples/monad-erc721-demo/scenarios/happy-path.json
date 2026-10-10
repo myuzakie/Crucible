@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "0.1",
+  "name": "collectible-happy-path",
+  "network": "local",
+  "actors": {
+    "deployer": "env:DEPLOYER_PRIVATE_KEY",
+    "alice": "env:ALICE_PRIVATE_KEY"
+  },
+  "nodes": [
+    { "id": "deploy", "type": "deploy", "contract": "Collectible", "args": [], "after": [] },
+    { "id": "mint", "type": "call", "from": "deployer", "to": "deploy", "fn": "mint", "args": ["alice"], "after": ["deploy"] },
+    { "id": "owner", "type": "assert", "check": { "fn": "ownerOf", "args": ["0"], "eq": "alice" }, "after": ["mint"] }
+  ]
+}

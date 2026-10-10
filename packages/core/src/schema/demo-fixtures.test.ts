@@ -47,3 +47,18 @@ for (const name of ['happy-path', 'buggy-mint'] as const) {
     assert.equal(result.scenario, name === 'happy-path' ? 'token-happy-path' : 'token-buggy-mint');
   });
 }
+
+for (const name of ['happy-path', 'missing-owner'] as const) {
+  test(`ERC-721 ${name} scenario passes schema`, () => {
+    const scenario = ScenarioSchema.parse(
+      readJson(`examples/monad-erc721-demo/scenarios/${name}.json`)
+    );
+    assert.equal(scenario.nodes[0]?.type, 'deploy');
+    assert.equal(scenario.nodes[0]?.contract, 'Collectible');
+  });
+}
+
+test('ERC-721 result fixture passes RunResult schema', () => {
+  const result = RunResultSchema.parse(readJson('fixtures/result/erc721-happy.json'));
+  assert.equal(result.scenario, 'collectible-happy-path');
+});
