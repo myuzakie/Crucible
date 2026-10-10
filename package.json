@@ -15,6 +15,7 @@
     "build": "tsc --noEmit && pnpm --filter @crucible/web build && pnpm web:check",
     "cli:build": "pnpm --filter @ohmuzakie/crucible-cli build",
     "cli:pack": "pnpm --filter @ohmuzakie/crucible-cli pack",
+    "test:external": "tsx scripts/external-acceptance.ts",
     "web:check": "tsx scripts/web-deploy-check.ts",
     "crucible": "tsx packages/cli/src/index.ts"
   },

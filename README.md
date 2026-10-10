@@ -41,6 +41,15 @@ pnpm crucible scenario create --root /path/to/repo
 pnpm crucible web --result /path/to/repo/result.json
 ```
 
+Acceptance tiga repository publik:
+
+```bash
+pnpm test:external --json \
+  --target scaffold-monad-foundry=/path/to/scaffold-monad-foundry \
+  --target scaffold-eth-2=/path/to/scaffold-eth-2 \
+  --target se-2-challenges=/path/to/se-2-challenges
+```
+
 Untuk clean clone yang belum memiliki command `crucible`, jalankan dari repository Crucible dengan `--root` seperti contoh di atas. Setelah package CLI dipublikasikan, command yang sama dapat dijalankan langsung dari repository dApp.
 
 Status `MISSING_SCENARIO` bukan error toolchain: Crucible sengaja berhenti karena business flow belum diketahui. Buat scenario yang sesuai contract, lalu ulangi command. Status `UNSUPPORTED_TOOLCHAIN`, `MISSING_TOOL`, `MISSING_ARTIFACT`, `BUILD_FAILED`, dan `SCENARIO_FAILED` selalu disertai langkah berikutnya.
