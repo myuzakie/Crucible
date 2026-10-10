@@ -72,6 +72,8 @@ pnpm test:smoke:monad
 
 Validasi chain ID `10143`, deploy/call/assert, receipt, dan explorer link. Missing RPC/faucet dilaporkan sebagai `LIVE SMOKE: BLOCKED`. Jangan commit `.env`.
 
+Workflow `Monad Smoke` berjalan manual dari GitHub Actions atau nightly. Set repository secrets `MONAD_TESTNET_RPC_URL`, `MONAD_CHAIN_ID` (`10143`), `DEPLOYER_PRIVATE_KEY`, dan `ALICE_PRIVATE_KEY`; result aman di-upload sebagai artifact. Workflow ini tidak dijalankan oleh pull request CI.
+
 ## Repository flow
 
 ```text
