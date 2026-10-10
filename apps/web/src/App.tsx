@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { validateDiagnosisForResult, type Diagnosis } from '@crucible/ai';
 import { replaySequence, validateResult, type RunResult } from './viewer.js';
 
 const fixtures = [
@@ -20,6 +21,8 @@ export function App() {
   const [selectedId, setSelectedId] = useState('');
   const [replayIndex, setReplayIndex] = useState<number | null>(null);
   const [replayMessage, setReplayMessage] = useState('');
+  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
+  const [diagnosisError, setDiagnosisError] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -28,6 +31,8 @@ export function App() {
     setSelectedId('');
     setReplayIndex(null);
     setReplayMessage('');
+    setDiagnosis(null);
+    setDiagnosisError('');
     fetch(fixture, { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error(`Fixture tidak ditemukan (${response.status}).`);
@@ -44,6 +49,21 @@ export function App() {
       });
     return () => controller.abort();
   }, [fixture]);
+
+  useEffect(() => {
+    if (!result || result.status !== 'failed') return;
+    if (result.scenario !== 'token-buggy-mint') {
+      setDiagnosisError('Tidak ada diagnosis cache untuk scenario ini.');
+      return;
+    }
+    fetch('/diagnosis/buggy-mint.json')
+      .then((response) => {
+        if (!response.ok) throw new Error(`Diagnosis cache tidak ditemukan (${response.status}).`);
+        return response.json();
+      })
+      .then((value) => setDiagnosis(validateDiagnosisForResult(value, result)))
+      .catch((reason: unknown) => setDiagnosisError(reason instanceof Error ? reason.message : 'AI diagnosis unavailable.'));
+  }, [result]);
 
   useEffect(() => {
     if (replayIndex === null || !result) return;
@@ -141,6 +161,19 @@ export function App() {
               ) : <p>Select a node to inspect it.</p>}
             </aside>
           </section>
+          {result.status === 'failed' ? (
+            <section className="panel diagnosis-panel" aria-live="polite">
+              <div className="panel-heading"><div><p className="eyebrow">AI-ASSISTED DEBUGGING</p><h2>Diagnosis</h2></div><span>{diagnosis ? `${Math.round(diagnosis.confidence * 100)}% confidence` : 'offline fallback'}</span></div>
+              {diagnosis ? (
+                <div className="diagnosis-grid">
+                  <div><span className="diagnosis-label">Root cause</span><p>{diagnosis.rootCause}</p></div>
+                  <div><span className="diagnosis-label">Evidence</span><ul className="evidence-list">{diagnosis.evidence.map((item) => <li key={`${item.nodeId}-${item.field}`}><code>{item.nodeId}.{item.field}</code> = {item.value}</li>)}</ul></div>
+                  <div><span className="diagnosis-label">Suggested patch</span><p>{diagnosis.suggestedFix}</p></div>
+                  <div><span className="diagnosis-label">Follow-up tests</span><ul className="evidence-list">{diagnosis.followUpTests.map((item) => <li key={item}>{item}</li>)}</ul></div>
+                </div>
+              ) : <p className="diagnosis-unavailable">{diagnosisError || 'Loading cached diagnosis…'} RunResult tetap tersedia.</p>}
+            </section>
+          ) : null}
         </>
       ) : null}
     </main>

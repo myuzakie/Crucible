@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "0.1",
+  "runId": "fixture-buggy-001",
+  "status": "ready",
+  "rootCause": "mint berhasil mengirim transaksi tetapi tidak mengubah balanceOf alice.",
+  "evidence": [
+    { "nodeId": "mint", "field": "status", "value": "passed" },
+    { "nodeId": "balance", "field": "status", "value": "failed" },
+    { "nodeId": "balance", "field": "error.expected", "value": "1000" },
+    { "nodeId": "balance", "field": "error.actual", "value": "0" }
+  ],
+  "suggestedFix": "Update BuggyToken.mint so it increments balanceOf[to] and totalSupply before returning.",
+  "confidence": 0.99,
+  "followUpTests": [
+    "forge test --match-test testBugIsObservable",
+    "Run the happy-path scenario and assert balanceOf(alice) equals 1000."
+  ]
+}

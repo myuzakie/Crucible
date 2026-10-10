@@ -184,6 +184,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@crucible/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@crucible/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -205,6 +211,15 @@ importers:
         version: 8.3.4(@types/node@24.19.1)(esbuild@0.28.2)(tsx@4.23.15)
 
   examples/monad-erc20-demo: {}
+
+  packages/ai:
+    dependencies:
+      '@crucible/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
   packages/cli:
     dependencies:
