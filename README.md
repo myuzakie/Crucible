@@ -2,7 +2,7 @@
 
 Crucible adalah platform pengujian end-to-end dApp/smart contract di Monad: scenario JSON dijalankan sebagai execution flow, hasil divisualisasikan, failure didiagnosis AI, dan report dapat disertifikasi.
 
-## Development
+## Quick start (clean clone)
 
 ```bash
 pnpm install
@@ -12,9 +12,26 @@ pnpm test
 pnpm build
 ```
 
-## Local runner
+Tidak membutuhkan RPC, wallet, atau secret.
 
-Build the demo contracts, start Anvil, then run a scenario with test-only keys from Anvil:
+## Runtime modes
+
+| Mode | Command / entry | Needs secrets? |
+|---|---|---|
+| `unit` | `pnpm test` | No |
+| `local` | Anvil + `pnpm crucible run … --network local` | Anvil test keys only |
+| `fixture` | `pnpm --filter @crucible/web dev` | No |
+| `monad-testnet` | `pnpm test:smoke:monad` | Yes (manual/nightly) |
+
+## Fixture / offline demo
+
+```bash
+pnpm --filter @crucible/web dev
+```
+
+Web memuat `apps/web/public/results/*.json` dan diagnosis cache. Tidak memanggil RPC dan tidak memakai private key. Fixture RunResult juga ada di `fixtures/result/`; diagnosis di `fixtures/diagnosis/`; certificate di `fixtures/certificate/`.
+
+## Local runner
 
 ```bash
 forge build --root examples/monad-erc20-demo
@@ -24,17 +41,36 @@ DEPLOYER_PRIVATE_KEY=<anvil-key> ALICE_PRIVATE_KEY=<anvil-key> \
   --network local --out result.json
 ```
 
-Use `--rpc <url>` or `LOCAL_RPC_URL` when Anvil runs on another port. The buggy scenario exits non-zero after writing its failed `RunResult`.
+Gunakan `--rpc <url>` atau `LOCAL_RPC_URL` jika Anvil tidak di `8545`. Scenario buggy menulis `RunResult` gagal dan exit non-zero.
 
-## Monad Testnet smoke test
+## Certificate (offline)
 
-Use dedicated faucet-funded test wallets, put the variables from `.env.example` in `.env`, then run:
+```bash
+# generate a throwaway signing key (never commit the private key)
+openssl genpkey -algorithm Ed25519 -out certificate-private.pem
+
+pnpm crucible certify \
+  examples/monad-erc20-demo/scenarios/buggy-mint.json \
+  fixtures/result/buggy-mint.json \
+  fixtures/diagnosis/buggy-mint.json \
+  --key certificate-private.pem \
+  --out certificate.json
+
+pnpm crucible verify certificate.json
+pnpm crucible verify fixtures/certificate/buggy-mint.json
+```
+
+Report berisi Scenario + RunResult + Diagnosis, `contentHash`, dan signature ed25519 + public key. Private key tidak boleh ada di report.
+
+## Monad Testnet smoke (manual)
+
+Salin `.env.example` ke `.env`, isi wallet faucet-funded, lalu:
 
 ```bash
 pnpm test:smoke:monad
 ```
 
-The command validates chain ID `10143`, derives public addresses from the keys, runs the same deploy/call/assert path, and prints explorer links. It writes the safe result to `/tmp/crucible-monad-smoke-result.json` by default. Missing RPC access or faucet funds is reported as `LIVE SMOKE: BLOCKED`.
+Validasi chain ID `10143`, deploy/call/assert, receipt, dan explorer link. Missing RPC/faucet dilaporkan sebagai `LIVE SMOKE: BLOCKED`. Jangan commit `.env`.
 
 ## Repository flow
 
@@ -42,10 +78,11 @@ The command validates chain ID `10143`, derives public addresses from the keys, 
 feature/fix branch -> PR ke dev -> staging -> main
 ```
 
-Gunakan `CONTRIBUTING.md` untuk branch, commit, Issue, dan Pull Request.
+Lihat `CONTRIBUTING.md` untuk branch, commit, Issue, dan Pull Request.
 
-## Environment
+## Security notes
 
-Salin `.env.example` ke `.env` hanya jika menjalankan Monad Testnet. Private key testnet tidak boleh masuk Git.
-
-Project memory lokal berada di `CRUCIBLE_context_project/` dan sengaja tidak ditrack.
+- Private key hanya dari environment / CI secret.
+- Web dan fixture mode tidak boleh memegang private key atau mengirim transaksi.
+- Jangan commit `.env`, `*.pem`, `result.json` hasil run, atau log yang berisi secret.
+- Project memory lokal `CRUCIBLE_context_project/` sengaja di-ignore.

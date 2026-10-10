@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "0.1",
+  "reportId": "cert-buggy-001",
+  "createdAt": "2026-10-11T00:00:03.000Z",
+  "contentHash": "c795b4b193b2112a77e1723991e6539a8e34180e09b1dd44a2562619a80bbba9",
+  "scenario": {
+    "schemaVersion": "0.1",
+    "name": "token-buggy-mint",
+    "network": "local",
+    "actors": {
+      "deployer": "env:DEPLOYER_PRIVATE_KEY",
+      "alice": "env:ALICE_PRIVATE_KEY"
+    },
+    "nodes": [
+      {
+        "id": "deploy",
+        "type": "deploy",
+        "contract": "BuggyToken",
+        "args": [],
+        "after": []
+      },
+      {
+        "id": "mint",
+        "type": "call",
+        "from": "deployer",
+        "to": "deploy",
+        "fn": "mint",
+        "args": [
+          "alice",
+          "1000"
+        ],
+        "after": [
+          "deploy"
+        ]
+      },
+      {
+        "id": "balance",
+        "type": "assert",
+        "check": {
+          "fn": "balanceOf",
+          "args": [
+            "alice"
+          ],
+          "eq": "1000"
+        },
+        "after": [
+          "mint"
+        ]
+      }
+    ]
+  },
+  "runResult": {
+    "schemaVersion": "0.1",
+    "runId": "fixture-buggy-001",
+    "scenario": "token-buggy-mint",
+    "status": "failed",
+    "score": 66,
+    "network": {
+      "name": "local",
+      "chainId": 31337,
+      "explorerUrl": "https://testnet.monadexplorer.com"
+    },
+    "startedAt": "2026-10-11T00:00:00.000Z",
+    "finishedAt": "2026-10-11T00:00:02.000Z",
+    "nodes": [
+      {
+        "id": "deploy",
+        "status": "passed",
+        "durationMs": 820,
+        "txHash": "0xdeploybuggy0000000000000000000000000000000000000000000000000001"
+      },
+      {
+        "id": "mint",
+        "status": "passed",
+        "durationMs": 640,
+        "txHash": "0xmintbuggy00000000000000000000000000000000000000000000000000001"
+      },
+      {
+        "id": "balance",
+        "status": "failed",
+        "durationMs": 20,
+        "error": {
+          "kind": "assertion",
+          "message": "balanceOf(alice) tidak sesuai setelah mint",
+          "expected": "1000",
+          "actual": "0"
+        }
+      }
+    ],
+    "summary": {
+      "passed": 2,
+      "failed": 1,
+      "skipped": 0
+    }
+  },
+  "diagnosis": {
+    "schemaVersion": "0.1",
+    "runId": "fixture-buggy-001",
+    "status": "ready",
+    "rootCause": "mint berhasil mengirim transaksi tetapi tidak mengubah balanceOf alice.",
+    "evidence": [
+      {
+        "nodeId": "mint",
+        "field": "status",
+        "value": "passed"
+      },
+      {
+        "nodeId": "balance",
+        "field": "status",
+        "value": "failed"
+      },
+      {
+        "nodeId": "balance",
+        "field": "error.expected",
+        "value": "1000"
+      },
+      {
+        "nodeId": "balance",
+        "field": "error.actual",
+        "value": "0"
+      }
+    ],
+    "suggestedFix": "Update BuggyToken.mint so it increments balanceOf[to] and totalSupply before returning.",
+    "confidence": 0.99,
+    "followUpTests": [
+      "forge test --match-test testBugIsObservable",
+      "Run the happy-path scenario and assert balanceOf(alice) equals 1000."
+    ]
+  },
+  "signature": {
+    "algorithm": "ed25519",
+    "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA+sDAoVjxbeEOHk5A3GRuUxYrsl/vb+fMV3QnPRP5ONs=\n-----END PUBLIC KEY-----\n",
+    "value": "vJM7G6nF75tOmE+c7Q8UL2VVE+WWwhDzvO7OkiALYeTYqwfAlGPOpI3EzDnwMuD1HVW1tA6hiP3jFGG5LRnTDw=="
+  }
+}

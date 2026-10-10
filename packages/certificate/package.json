@@ -1,0 +1,14 @@
+{
+  "name": "@crucible/certificate",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@crucible/ai": "workspace:*",
+    "@crucible/core": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}
