@@ -5,7 +5,7 @@ export const CrucibleConfigSchema = z.object({
   toolchain: z.literal('foundry'),
   foundryRoot: z.string().min(1),
   artifactDir: z.string().min(1).default('out'),
-  scenario: z.string().min(1),
+  scenario: z.string().min(1).optional(),
   network: z.string().min(1).default('local'),
   rpcUrl: z.string().min(1).default('http://127.0.0.1:8545')
 });
