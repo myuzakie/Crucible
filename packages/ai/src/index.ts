@@ -62,3 +62,13 @@ export function validateDiagnosisForResult(value: unknown, result: RunResult): D
 }
 
 export { EvidenceFieldSchema };
+export {
+  buildDiagnosisPrompt,
+  createOpenAICompatibleClient,
+  diagnoseWithModel,
+  type DiagnosisModelClient,
+  type DiagnosisServiceOptions,
+  type DiagnosisServiceResult,
+  type DiagnosisSource,
+  type OpenAICompatibleClientOptions
+} from './service.js';

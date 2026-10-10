@@ -34,6 +34,10 @@ Recommended demo order:
 
 Known limits: the AI panel uses a deterministic cached diagnosis; live testnet depends on RPC/faucet availability and GitHub Secrets; certificate signing remains off-chain.
 
+## Live AI diagnosis (optional)
+
+The Web tries `/api/diagnose` for a configured server-side provider and falls back to the cached diagnosis when the endpoint is unavailable. Configure `AI_API_KEY`, `AI_MODEL`, and optional `AI_API_URL` only in the server/hosting environment; never use `VITE_*` variables for these values. The endpoint validates every model response against the RunResult evidence contract and applies an 8-second timeout.
+
 ## Runtime modes
 
 | Mode | Command / entry | Needs secrets? |
