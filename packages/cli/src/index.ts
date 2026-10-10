@@ -26,6 +26,8 @@ import {
 import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
+import { isLocalTestCommand, localTestUsage } from './command-contract.js';
+
 function usage(): never {
   console.error(
     [
@@ -33,7 +35,7 @@ function usage(): never {
       '  pnpm crucible detect [--root path] [--json]',
       '  pnpm crucible doctor [--root path] [--json]',
       '  pnpm crucible init [--root path] [--json]',
-      '  pnpm crucible test --local [--scenario path] [--root path] [--foundry-root path] [--out path]',
+      '  pnpm crucible test [--local] [--scenario path] [--root path] [--foundry-root path] [--out path]',
       '  pnpm crucible validate <scenario-or-template.json>',
       '  pnpm crucible run <scenario.json> --network local [--foundry-root path] [--rpc url] [--out result.json]',
       '  pnpm crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
@@ -129,8 +131,8 @@ try {
   }
 
   if (command === 'test') {
-    if (!rest.includes('--local')) {
-      throw new Error('Only --local is available. Use: pnpm crucible test --local');
+    if (!isLocalTestCommand(rest)) {
+      throw new Error(`Only local testing is available. ${localTestUsage()}`);
     }
     const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
     const scenarioPath = await resolveScenarioPath(rest, root);
