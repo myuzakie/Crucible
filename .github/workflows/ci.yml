@@ -27,6 +27,12 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build contract fixtures
+        run: forge build --root examples/monad-erc20-demo
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

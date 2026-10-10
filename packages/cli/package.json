@@ -5,5 +5,9 @@
   "type": "module",
   "bin": {
     "crucible": "./src/index.ts"
+  },
+  "dependencies": {
+    "@crucible/core": "workspace:*",
+    "viem": "^2.57.4"
   }
 }
