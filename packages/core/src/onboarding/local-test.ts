@@ -245,20 +245,83 @@ export async function runOnboardingLocalTest(
   }
 }
 
-export function formatOnboardingLocalResult(result: OnboardingLocalResult): string {
+export function formatOnboardingLocalResult(
+  result: OnboardingLocalResult,
+  options: { verbose?: boolean } = {}
+): string {
+  const verbose = options.verbose === true;
+  const isSuccess = result.status === 'PASSED';
+  const canRun = isSuccess
+    ? 'Local scenario can run on a fresh Anvil chain.'
+    : result.status === 'MISSING_SCENARIO'
+      ? 'Crucible can prepare the local project, but it will not invent a business flow.'
+      : result.status === 'UNSUPPORTED_TOOLCHAIN'
+        ? 'No supported local adapter is available for this repository.'
+        : 'Crucible cannot safely start the local test yet.';
+
   const lines = [
-    `STATUS: ${result.status}`,
-    result.summary,
+    isSuccess ? 'CRUCIBLE LOCAL TEST' : 'CRUCIBLE CANNOT RUN',
     '',
-    `Root: ${result.root}`,
-    `Contracts: ${result.detectedContracts.length ? result.detectedContracts.join(', ') : '(none)'}`,
-    `Scenario: ${result.scenarioPath ?? '(none)'}`,
-    `Foundry: ${result.foundryRoot ?? '(none)'}`
+    'What we found:',
+    result.detectedContracts.length
+      ? `✓ Contract${result.detectedContracts.length === 1 ? '' : 's'}: ${result.detectedContracts.join(', ')}`
+      : result.status === 'UNSUPPORTED_TOOLCHAIN'
+        ? `✓ Repository detected: ${result.summary}`
+        : '✓ Repository inspected',
+    result.scenarioPath ? `✓ Scenario: ${result.scenarioPath}` : '! No business scenario configured yet',
+    '',
+    'What we can run:',
+    isSuccess ? `✓ ${canRun}` : `! ${canRun}`,
+    '',
+    'What is missing:',
+    isSuccess
+      ? '✓ Nothing required for this local run'
+      : result.nextSteps[0] ?? result.summary,
+    '',
+    'Status:',
+    result.status,
+    '',
+    'Next step:'
   ];
-  if (result.resultPath) lines.push(`Result: ${result.resultPath}`);
-  if (result.webPath) lines.push(`Web path: ${result.webPath}`);
-  lines.push('', 'Next steps:');
+
   for (const step of result.nextSteps) lines.push(`- ${step}`);
+  if (result.runResult) {
+    lines.push('', 'Running:');
+    for (const node of result.runResult.nodes) {
+      lines.push(`${node.status === 'passed' ? '✓' : node.status === 'failed' ? '✗' : '!'} ${node.id}`);
+      if (verbose && node.error) {
+        if (node.error.expected !== undefined) lines.push(`  Expected: ${String(node.error.expected)}`);
+        if (node.error.actual !== undefined) lines.push(`  Actual: ${String(node.error.actual)}`);
+        if (node.error.message) lines.push(`  Error: ${node.error.message}`);
+      }
+    }
+    const failed = result.runResult.nodes.find((node) => node.status === 'failed' && node.error);
+    if (failed?.error && !verbose) {
+      if (failed.error.expected !== undefined) lines.push(`Expected: ${String(failed.error.expected)}`);
+      if (failed.error.actual !== undefined) lines.push(`Actual: ${String(failed.error.actual)}`);
+    }
+  }
+  if (result.resultPath) {
+    lines.push('', `Result: ${result.resultPath}`);
+    if (result.webPath) lines.push(`Web: ${result.webPath}`);
+  }
+
+  if (verbose) {
+    lines.push(
+      '',
+      'Details:',
+      `Root: ${result.root}`,
+      `Foundry root: ${result.foundryRoot ?? '(none)'}`,
+      `Scenario path: ${result.scenarioPath ?? '(none)'}`
+    );
+    if (result.runResult) {
+      lines.push(
+        `Run status: ${result.runResult.status}`,
+        `Nodes: ${result.runResult.nodes.map((node) => `${node.id}=${node.status}`).join(', ')}`
+      );
+    }
+  }
+
   return lines.join('\n');
 }
 

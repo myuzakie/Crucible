@@ -36,7 +36,13 @@ test('onboarding reports MISSING_TOOL when forge is absent', async () => {
     process.env.ANVIL_BIN = '/missing/anvil';
     const result = await runOnboardingLocalTest({ root, autoInit: false });
     assert.equal(result.status, 'MISSING_TOOL');
-    assert.match(result.nextSteps.join('\n'), /Foundry|PATH|forge/i);
+    const output = formatOnboardingLocalResult(result);
+    assert.match(output, /CRUCIBLE CANNOT RUN/);
+    assert.match(output, /What we found/);
+    assert.match(output, /What is missing/);
+    assert.match(output, /MISSING_TOOL/);
+    assert.match(output, /Foundry|PATH|forge/i);
+    assert.doesNotMatch(output, /ENOENT|ELIFECYCLE/);
   } finally {
     process.env.PATH = previousPath;
     if (previousForge === undefined) delete process.env.FORGE_BIN;
@@ -56,7 +62,10 @@ test('onboarding reports MISSING_SCENARIO without inventing deploy steps', async
     const result = await runOnboardingLocalTest({ root, autoInit: true });
     assert.equal(result.status, 'MISSING_SCENARIO');
     assert.ok(result.detectedContracts.includes('YourContract'));
-    assert.match(formatOnboardingLocalResult(result), /MISSING_SCENARIO/);
+    const output = formatOnboardingLocalResult(result);
+    assert.match(output, /MISSING_SCENARIO/);
+    assert.match(output, /YourContract/);
+    assert.match(output, /Next step/);
     assert.doesNotMatch(result.summary + result.nextSteps.join('\n'), /deployed|running scenario/i);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -78,6 +87,7 @@ test('onboarding happy path runs detect → build → Anvil → test', async () 
     assert.equal(onboardingExitCode(result.status), 0);
     assert.equal(result.runResult?.status, 'passed');
     assert.ok(result.resultPath?.endsWith('result.json'));
+    assert.match(formatOnboardingLocalResult(result), /CRUCIBLE LOCAL TEST/);
   } finally {
     rmSync(dirname(outPath), { recursive: true, force: true });
   }

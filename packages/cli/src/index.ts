@@ -37,7 +37,7 @@ function usage(): never {
       '  pnpm crucible detect [--root path] [--json]',
       '  pnpm crucible doctor [--root path] [--json]',
       '  pnpm crucible init [--root path] [--json]',
-      '  pnpm crucible test [--local] [--scenario path] [--root path] [--foundry-root path] [--out path]',
+      '  pnpm crucible test [--local] [--scenario path] [--root path] [--foundry-root path] [--out path] [--verbose|--json]',
       '  pnpm crucible validate <scenario-or-template.json>',
       '  pnpm crucible run <scenario.json> --network local [--foundry-root path] [--rpc url] [--out result.json]',
       '  pnpm crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
@@ -138,7 +138,7 @@ try {
     if (rest.includes('--json')) {
       console.log(JSON.stringify(result, null, 2));
     } else {
-      console.log(formatOnboardingLocalResult(result));
+      console.log(formatOnboardingLocalResult(result, { verbose: rest.includes('--verbose') }));
     }
     process.exit(onboardingExitCode(result.status));
   }

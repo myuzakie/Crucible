@@ -31,6 +31,18 @@ pnpm crucible test --root /path/to/repo
 - Artifact Foundry dimuat lewat adapter eksplisit (`--foundry-root` atau `crucible.config.json`); tidak menebak contract/network.
 - Template bisnis pertama: `mint NFT` (`fixtures/scenarios/mint-nft.json`) → expand ke `deploy -> mint -> ownerOf`.
 
+Output default hanya menampilkan hal yang perlu dilakukan developer. Gunakan `--verbose` untuk path dan node detail, atau `--json` untuk automation:
+
+```bash
+pnpm crucible test --root /path/to/repo
+pnpm crucible test --root /path/to/repo --verbose
+pnpm crucible test --root /path/to/repo --json > crucible-result.json
+```
+
+Untuk clean clone yang belum memiliki command `crucible`, jalankan dari repository Crucible dengan `--root` seperti contoh di atas. Setelah package CLI dipublikasikan, command yang sama dapat dijalankan langsung dari repository dApp.
+
+Status `MISSING_SCENARIO` bukan error toolchain: Crucible sengaja berhenti karena business flow belum diketahui. Buat scenario yang sesuai contract, lalu ulangi command. Status `UNSUPPORTED_TOOLCHAIN`, `MISSING_TOOL`, `MISSING_ARTIFACT`, `BUILD_FAILED`, dan `SCENARIO_FAILED` selalu disertai langkah berikutnya.
+
 ```bash
 pnpm crucible validate fixtures/scenarios/mint-nft.json
 pnpm crucible test --local \
