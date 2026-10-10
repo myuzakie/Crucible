@@ -1,25 +1,8 @@
+import type { RunResult } from '@crucible/core/schema';
+
 export type Status = 'passed' | 'failed' | 'skipped';
-
-export type NodeResult = {
-  id: string;
-  status: Status;
-  durationMs: number;
-  txHash?: string;
-  error?: { kind: string; message?: string; expected?: unknown; actual?: unknown };
-};
-
-export type RunResult = {
-  schemaVersion: string;
-  runId: string;
-  scenario: string;
-  status: 'passed' | 'failed';
-  score: number;
-  network: { name: string; chainId: number; explorerUrl?: string };
-  startedAt: string;
-  finishedAt: string;
-  nodes: NodeResult[];
-  summary: { passed: number; failed: number; skipped: number };
-};
+export type { RunResult };
+export type NodeResult = RunResult['nodes'][number];
 
 export function validateResult(value: unknown): RunResult {
   if (!value || typeof value !== 'object') throw new Error('RunResult bukan object.');
