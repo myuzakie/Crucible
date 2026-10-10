@@ -3,7 +3,7 @@ import {
   validateDiagnosisForResult,
   type Diagnosis,
   type DiagnosisRequest
-} from './index.js';
+} from './contract.js';
 
 export type DiagnosisModelClient = (prompt: string, signal: AbortSignal) => Promise<unknown>;
 

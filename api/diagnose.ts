@@ -1,8 +1,7 @@
 import {
   createOpenAICompatibleClient,
-  diagnoseWithModel,
-  type DiagnosisRequest
-} from '../packages/ai/src/index.js';
+  diagnoseWithModel
+} from '../packages/ai/src/service.js';
 
 export const config = { runtime: 'edge' };
 
@@ -26,8 +25,6 @@ export default async function diagnose(request: Request): Promise<Response> {
   const apiKey = process.env.AI_API_KEY;
   const model = process.env.AI_MODEL;
   const endpoint = process.env.AI_API_URL ?? 'https://api.openai.com/v1/chat/completions';
-  const body = input as Partial<DiagnosisRequest>;
-
   if (!apiKey || !model) return json({ error: 'AI provider is not configured.' }, 503);
 
   try {
