@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import { CertificateRegistryAbi, verifyCertificate } from '@crucible/certificate';
+import { CertificateRegistryAbi, verifyCertificate } from '../packages/certificate/src/index.js';
 import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
