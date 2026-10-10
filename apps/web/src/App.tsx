@@ -23,6 +23,7 @@ export function App() {
   const [replayMessage, setReplayMessage] = useState('');
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [diagnosisError, setDiagnosisError] = useState('');
+  const [diagnosisSource, setDiagnosisSource] = useState<'live' | 'fallback' | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -33,6 +34,7 @@ export function App() {
     setReplayMessage('');
     setDiagnosis(null);
     setDiagnosisError('');
+    setDiagnosisSource(null);
     fetch(fixture, { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error(`Fixture tidak ditemukan (${response.status}).`);
@@ -56,13 +58,52 @@ export function App() {
       setDiagnosisError('Tidak ada diagnosis cache untuk scenario ini.');
       return;
     }
-    fetch('/diagnosis/buggy-mint.json')
-      .then((response) => {
+    const controller = new AbortController();
+    let active = true;
+    const loadDiagnosis = async () => {
+      try {
+        const scenarioResponse = await fetch('/scenarios/buggy-mint.json', { signal: controller.signal });
+        if (!scenarioResponse.ok) throw new Error(`Scenario tidak ditemukan (${scenarioResponse.status}).`);
+        const scenario = await scenarioResponse.json();
+        const liveResponse = await fetch('/api/diagnose', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ runResult: result, scenario }),
+          signal: controller.signal
+        });
+        if (!liveResponse.ok) throw new Error(`Live AI unavailable (${liveResponse.status}).`);
+        const payload = await liveResponse.json() as { diagnosis?: unknown };
+        if (!payload.diagnosis) throw new Error('Live AI returned no diagnosis.');
+        const parsed = validateDiagnosisForResult(payload.diagnosis, result);
+        if (active) {
+          setDiagnosis(parsed);
+          setDiagnosisSource('live');
+          setDiagnosisError('');
+        }
+        return;
+      } catch (reason: unknown) {
+        if (reason instanceof DOMException && reason.name === 'AbortError') return;
+      }
+
+      try {
+        const response = await fetch('/diagnosis/buggy-mint.json', { signal: controller.signal });
         if (!response.ok) throw new Error(`Diagnosis cache tidak ditemukan (${response.status}).`);
-        return response.json();
-      })
-      .then((value) => setDiagnosis(validateDiagnosisForResult(value, result)))
-      .catch((reason: unknown) => setDiagnosisError(reason instanceof Error ? reason.message : 'AI diagnosis unavailable.'));
+        const parsed = validateDiagnosisForResult(await response.json(), result);
+        if (active) {
+          setDiagnosis(parsed);
+          setDiagnosisSource('fallback');
+          setDiagnosisError('');
+        }
+      } catch (reason: unknown) {
+        if (reason instanceof DOMException && reason.name === 'AbortError') return;
+        if (active) setDiagnosisError(reason instanceof Error ? reason.message : 'AI diagnosis unavailable.');
+      }
+    };
+    void loadDiagnosis();
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [result]);
 
   useEffect(() => {
@@ -185,7 +226,7 @@ export function App() {
               <div className="panel-heading">
                 <div><p className="eyebrow">AI-ASSISTED DEBUGGING</p><h2>Diagnosis</h2></div>
                 <div className="flow-actions">
-                  <span>{diagnosis ? `${Math.round(diagnosis.confidence * 100)}% confidence` : 'offline fallback'}</span>
+                  <span>{diagnosis ? `${Math.round(diagnosis.confidence * 100)}% · ${diagnosisSource === 'live' ? 'live AI' : 'offline fallback'}` : 'offline fallback'}</span>
                   {diagnosis ? <button type="button" onClick={() => void downloadCertificate()}>Download certificate</button> : null}
                 </div>
               </div>
