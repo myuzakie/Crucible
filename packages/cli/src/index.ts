@@ -2,6 +2,7 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { createInterface } from 'node:readline/promises';
 
 import { CertificateRegistryAbi, createCertificate, verifyCertificate } from '@crucible/certificate';
 import { DiagnosisSchema } from '@crucible/ai';
@@ -15,7 +16,10 @@ import {
   formatDoctorReport,
   formatInitResult,
   formatOnboardingLocalResult,
+  createScenarioDraft,
+  formatScenarioPreview,
   initCrucible,
+  listScenarioContracts,
   onboardingExitCode,
   parsePrivateKey,
   resolveScenarioDocument,
@@ -23,6 +27,7 @@ import {
   runOnboardingLocalTest,
   runScenario,
   RunResultSchema,
+  writeScenario,
   type Scenario
 } from '@crucible/core';
 import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
@@ -38,6 +43,8 @@ function usage(): never {
       '  pnpm crucible doctor [--root path] [--json]',
       '  pnpm crucible init [--root path] [--json]',
       '  pnpm crucible test [--local] [--scenario path] [--root path] [--foundry-root path] [--out path] [--verbose|--json]',
+      '  pnpm crucible scenario create [--root path] [--foundry-root path] [--contract name] [--call fn] [--assert fn] [--yes]',
+      '  pnpm crucible web --result <result.json> [--port 5173]',
       '  pnpm crucible validate <scenario-or-template.json>',
       '  pnpm crucible run <scenario.json> --network local [--foundry-root path] [--rpc url] [--out result.json]',
       '  pnpm crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
@@ -56,6 +63,36 @@ function flag(args: string[], name: string, fallback?: string): string {
   }
   return args[index + 1] ?? usage();
 }
+
+function jsonFlag(args: string[], name: string, fallback: unknown[] = []): unknown[] {
+  if (!args.includes(name)) return fallback;
+  try {
+    const value = JSON.parse(flag(args, name));
+    if (!Array.isArray(value)) throw new Error('must be a JSON array');
+    return value;
+  } catch (error) {
+    throw new Error(`Invalid ${name}; expected a JSON array (${error instanceof Error ? error.message : String(error)}).`);
+  }
+}
+
+function scalarFlag(args: string[], name: string): string | number | boolean | undefined {
+  if (!args.includes(name)) return undefined;
+  const raw = flag(args, name);
+  try {
+    const value = JSON.parse(raw) as unknown;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+  } catch {
+    // A non-JSON value is treated as a string for convenient CLI use.
+  }
+  return raw;
+}
+
+async function ask(question: string, fallback = ''): Promise<string> {
+  const answer = await prompt.question(`${question}${fallback ? ` [${fallback}]` : ''}: `);
+  return answer.trim() || fallback;
+}
+
+const prompt = createInterface({ input: process.stdin, output: process.stdout });
 
 async function loadJson(path: string) {
   return JSON.parse(await readFile(resolve(path), 'utf8'));
@@ -86,10 +123,94 @@ async function resolveFoundryRoot(args: string[], cwd = process.cwd()): Promise<
   );
 }
 
+async function runScenarioCreate(args: string[], root: string): Promise<void> {
+  const config = await loadCrucibleConfig(root);
+  const detected = detectCapabilities(root);
+  const foundryRoot = args.includes('--foundry-root')
+    ? flag(args, '--foundry-root')
+    : config?.foundryRoot ?? detected.toolchain.foundry.configPaths[0]?.split('/').slice(0, -1).join('/') ?? '.';
+  const contracts = listScenarioContracts(root, foundryRoot);
+  if (!contracts.length) throw new Error('No contract with callable ABI functions was found. Run forge build first.');
+
+  let contractName = args.includes('--contract') ? flag(args, '--contract') : '';
+  if (!contractName) {
+    console.log('Detected contracts:');
+    contracts.forEach((contract, index) => console.log(`${index + 1}. ${contract.name}`));
+    const choice = Number(await ask('Choose contract', '1')) - 1;
+    contractName = contracts[choice]?.name ?? '';
+  }
+  const contract = contracts.find((candidate) => candidate.name === contractName);
+  if (!contract) throw new Error(`Contract ${contractName} was not found in compiled artifacts.`);
+
+  const writable = contract.functions.filter((fn) => fn.stateMutability !== 'view' && fn.stateMutability !== 'pure');
+  const readable = contract.functions.filter((fn) => fn.stateMutability === 'view' || fn.stateMutability === 'pure');
+  if (!writable.length || !readable.length) {
+    throw new Error(`Contract ${contract.name} needs at least one write function and one view/pure function.`);
+  }
+  const chooseFunction = async (label: string, functions: typeof contract.functions, selected?: string) => {
+    if (selected) return selected;
+    console.log(`${label} functions:`);
+    functions.forEach((fn, index) => console.log(`${index + 1}. ${fn.name}(${fn.inputs.map((input) => input.type).join(', ')})`));
+    const choice = Number(await ask(`Choose ${label.toLowerCase()} function`, '1')) - 1;
+    return functions[choice]?.name ?? '';
+  };
+  const call = await chooseFunction('Write', writable, args.includes('--call') ? flag(args, '--call') : undefined);
+  const assertion = await chooseFunction('Read/assertion', readable, args.includes('--assert') ? flag(args, '--assert') : undefined);
+  if (!call || !assertion) throw new Error('A call and an assertion function are required.');
+
+  const name = args.includes('--name')
+    ? flag(args, '--name')
+    : await ask('Scenario name', `${contract.name.toLowerCase()}-${call.toLowerCase()}`);
+  const constructorArgs = args.includes('--constructor-args-json')
+    ? jsonFlag(args, '--constructor-args-json')
+    : args.includes('--yes')
+      ? []
+      : JSON.parse((await ask('Constructor args as JSON', '[]')) || '[]');
+  const callArgs = args.includes('--call-args-json')
+    ? jsonFlag(args, '--call-args-json')
+    : args.includes('--yes')
+      ? []
+      : JSON.parse((await ask('Call args as JSON', '[]')) || '[]');
+  const assertionArgs = args.includes('--assert-args-json')
+    ? jsonFlag(args, '--assert-args-json')
+    : args.includes('--yes')
+      ? []
+      : JSON.parse((await ask('Assertion args as JSON', '[]')) || '[]');
+  const expected = scalarFlag(args, '--expected') ?? (args.includes('--yes') ? undefined : scalarFlag([ '--expected', await ask('Expected value as JSON', '') ], '--expected'));
+  const result = createScenarioDraft({
+    root,
+    foundryRoot,
+    artifactDir: config?.artifactDir,
+    contract: contract.name,
+    name,
+    constructorArgs,
+    call,
+    callArgs,
+    assertion,
+    assertionArgs,
+    expected
+  });
+  console.log(formatScenarioPreview(result));
+  const shouldWrite = args.includes('--yes') || (await ask('Write this scenario? (y/N)', 'N')).toLowerCase() === 'y';
+  if (!shouldWrite) {
+    console.log('Cancelled. No file was written.');
+    return;
+  }
+  const path = writeScenario(result, args.includes('--overwrite'));
+  console.log(`Created: ${path}`);
+  prompt.close();
+}
+
 const [command, ...rest] = process.argv.slice(2);
 if (!command) usage();
 
 try {
+  if (command === 'scenario' && rest[0] === 'create') {
+    const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
+    await runScenarioCreate(rest.slice(1), root);
+    process.exit(0);
+  }
+
   if (command === 'detect') {
     const root = rest.includes('--root') ? flag(rest, '--root') : process.cwd();
     const report = detectCapabilities(root);
