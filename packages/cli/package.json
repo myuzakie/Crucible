@@ -1,15 +1,29 @@
 {
   "name": "@crucible/cli",
-  "private": true,
+  "private": false,
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "crucible": "./src/index.ts"
+    "crucible": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=bundle --sourcemap --outfile=dist/index.js",
+    "prepack": "pnpm build"
   },
   "dependencies": {
+    "viem": "^2.57.4"
+  },
+  "devDependencies": {
     "@crucible/ai": "workspace:*",
     "@crucible/certificate": "workspace:*",
     "@crucible/core": "workspace:*",
-    "viem": "^2.57.4"
+    "esbuild": "^0.28.2"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
