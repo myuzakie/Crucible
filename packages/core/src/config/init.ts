@@ -74,7 +74,13 @@ function contractsFromSources(foundryAbs: string): string[] {
   return [...names].sort();
 }
 
-function listDetectedContracts(root: string, report: CapabilityReport, foundryRoot: string): string[] {
+export function listDetectedContracts(
+  rootInput = process.cwd(),
+  reportInput?: CapabilityReport
+): string[] {
+  const root = resolve(rootInput);
+  const report = reportInput ?? detectCapabilities(root);
+  const foundryRoot = pickFoundryRoot(root, report);
   const fromArtifacts = contractsFromArtifacts(report.artifacts.candidates);
   if (fromArtifacts.length > 0) return fromArtifacts;
   return contractsFromSources(resolve(root, foundryRoot));
@@ -91,7 +97,7 @@ export function initCrucible(rootInput = process.cwd()): InitResult {
 
   const report = detectCapabilities(root);
   const foundryRoot = pickFoundryRoot(root, report);
-  const detectedContracts = listDetectedContracts(root, report, foundryRoot);
+  const detectedContracts = listDetectedContracts(root, report);
   const existingScenario = report.scenarios.candidates[0];
   const configAbs = join(root, 'crucible.config.json');
 

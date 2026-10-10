@@ -22,7 +22,9 @@ Untuk repository Foundry eksternal (target pertama: `monad-developers/scaffold-m
 pnpm crucible test --root /path/to/repo
 ```
 
+- Satu command menjalankan detect → preflight → safe init → build → fresh Anvil → scenario (jika siap).
 - `test` otomatis memakai local mode. `test --local` tetap didukung sebagai alias eksplisit.
+- Jika prasyarat kurang, command berhenti aman dengan status actionable (`MISSING_SCENARIO`, `MISSING_TOOL`, `UNSUPPORTED_TOOLCHAIN`, …) tanpa menebak deploy/call.
 - `doctor` dan `init` tetap tersedia untuk diagnosis atau konfigurasi manual, bukan langkah wajib happy path.
 - `init` menulis `crucible.config.json` minimal dan **tidak** membuat scenario hardcode `Token`. Jika scenario belum ada, statusnya `MISSING_SCENARIO` plus daftar contract yang terdeteksi.
 - Local test menjalankan `forge build`, spawn Anvil fresh (port ephemeral), eksekusi scenario, tulis RunResult, lalu kill Anvil — tanpa faucet, Monad RPC, atau private key user (akun Anvil default).

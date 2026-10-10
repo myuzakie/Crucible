@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile, writeFile } from 'node:fs/promises';
-import { basename, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 import { CertificateRegistryAbi, createCertificate, verifyCertificate } from '@crucible/certificate';
 import { DiagnosisSchema } from '@crucible/ai';
@@ -14,11 +14,13 @@ import {
   formatCapabilityReport,
   formatDoctorReport,
   formatInitResult,
+  formatOnboardingLocalResult,
   initCrucible,
+  onboardingExitCode,
   parsePrivateKey,
   resolveScenarioDocument,
   runDoctor,
-  runLocalTest,
+  runOnboardingLocalTest,
   runScenario,
   RunResultSchema,
   type Scenario
@@ -84,15 +86,6 @@ async function resolveFoundryRoot(args: string[], cwd = process.cwd()): Promise<
   );
 }
 
-async function resolveScenarioPath(args: string[], cwd: string): Promise<string> {
-  if (args.includes('--scenario')) return resolve(flag(args, '--scenario'));
-  const config = await loadCrucibleConfig(cwd);
-  if (config?.scenario) return resolve(cwd, config.scenario);
-  throw new Error(
-    'Missing scenario. Pass --scenario <path> or set "scenario" in crucible.config.json (run crucible init).'
-  );
-}
-
 const [command, ...rest] = process.argv.slice(2);
 if (!command) usage();
 
@@ -135,17 +128,19 @@ try {
       throw new Error(`Only local testing is available. ${localTestUsage()}`);
     }
     const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
-    const scenarioPath = await resolveScenarioPath(rest, root);
-    const { foundryRoot, artifactDir } = await resolveFoundryRoot(rest, root);
-    const scenario = await loadScenario(scenarioPath);
-    const result = await runLocalTest({ scenario, foundryRoot, artifactDir });
-    const outputPath = resolve(flag(rest, '--out', 'result.json'));
-    await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`);
-    const webFile = basename(outputPath);
-    console.log(`${result.status.toUpperCase()}: ${result.scenario}`);
-    console.log(`Result: ${outputPath}`);
-    console.log(`Web path: /results/${webFile} (copy into apps/web/public/results/, then pnpm --filter @crucible/web dev)`);
-    process.exit(result.status === 'passed' ? 0 : 1);
+    const result = await runOnboardingLocalTest({
+      root,
+      scenarioPath: rest.includes('--scenario') ? flag(rest, '--scenario') : undefined,
+      foundryRoot: rest.includes('--foundry-root') ? flag(rest, '--foundry-root') : undefined,
+      outPath: flag(rest, '--out', 'result.json'),
+      autoInit: true
+    });
+    if (rest.includes('--json')) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(formatOnboardingLocalResult(result));
+    }
+    process.exit(onboardingExitCode(result.status));
   }
 
   if (command === 'verify') {
