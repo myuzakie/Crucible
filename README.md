@@ -14,6 +14,26 @@ pnpm build
 
 Tidak membutuhkan RPC, wallet, atau secret.
 
+## Demo freeze / final check
+
+Run the deterministic gate before a demo:
+
+```bash
+pnpm demo:check
+```
+
+It validates the happy/buggy scenarios, RunResult fixtures, diagnosis evidence, offline certificate, Web assets, and the malformed-result fallback. It does not call Monad or require a wallet.
+
+Recommended demo order:
+
+1. `pnpm demo:check` — offline gate.
+2. `pnpm --filter @crucible/web dev` — open the fixture viewer and select Buggy mint.
+3. `pnpm test` — unit, schema, certificate, and Anvil integration checks.
+4. `pnpm test:smoke:monad` — optional live testnet run with faucet-funded `.env`.
+5. GitHub Actions `Monad Smoke` — manual/nightly testnet run with repository Secrets.
+
+Known limits: the AI panel uses a deterministic cached diagnosis; live testnet depends on RPC/faucet availability and GitHub Secrets; certificate signing remains off-chain.
+
 ## Runtime modes
 
 | Mode | Command / entry | Needs secrets? |
