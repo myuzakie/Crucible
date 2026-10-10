@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "0.1",
+  "name": "mint-nft",
+  "network": "local",
+  "actors": {
+    "deployer": "env:DEPLOYER_PRIVATE_KEY",
+    "alice": "env:ALICE_PRIVATE_KEY"
+  },
+  "metadata": {
+    "businessFlow": "mint NFT",
+    "label": "Mint NFT"
+  },
+  "nodes": [
+    { "id": "deploy", "type": "deploy", "contract": "Collectible", "args": [], "after": [] },
+    {
+      "id": "mint",
+      "type": "call",
+      "from": "deployer",
+      "to": "deploy",
+      "fn": "mint",
+      "args": ["alice"],
+      "after": ["deploy"]
+    },
+    {
+      "id": "owner",
+      "type": "assert",
+      "check": { "fn": "ownerOf", "args": ["0"], "eq": "alice" },
+      "after": ["mint"]
+    }
+  ]
+}
