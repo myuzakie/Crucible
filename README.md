@@ -24,6 +24,7 @@ pnpm crucible test --root /path/to/repo
 
 - `test` otomatis memakai local mode. `test --local` tetap didukung sebagai alias eksplisit.
 - `doctor` dan `init` tetap tersedia untuk diagnosis atau konfigurasi manual, bukan langkah wajib happy path.
+- `init` menulis `crucible.config.json` minimal dan **tidak** membuat scenario hardcode `Token`. Jika scenario belum ada, statusnya `MISSING_SCENARIO` plus daftar contract yang terdeteksi.
 - Local test menjalankan `forge build`, spawn Anvil fresh (port ephemeral), eksekusi scenario, tulis RunResult, lalu kill Anvil — tanpa faucet, Monad RPC, atau private key user (akun Anvil default).
 - Artifact Foundry dimuat lewat adapter eksplisit (`--foundry-root` atau `crucible.config.json`); tidak menebak contract/network.
 - Template bisnis pertama: `mint NFT` (`fixtures/scenarios/mint-nft.json`) → expand ke `deploy -> mint -> ownerOf`.

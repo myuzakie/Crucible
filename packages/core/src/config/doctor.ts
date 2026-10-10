@@ -90,7 +90,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorRepo
   if (!capabilities.toolchain.foundry.detected) {
     nextSteps.push('Add or open a Foundry package (foundry.toml), then re-run doctor.');
   } else if (!capabilities.config.present) {
-    nextSteps.push('Run crucible init to create crucible.config.json and a scenario template.');
+    nextSteps.push('Run crucible init to create crucible.config.json (it will not invent a Token scenario).');
   }
   if (capabilities.toolchain.foundry.detected && !tools.forge.available) {
     nextSteps.push(missingToolMessage('forge', tools.forge));
