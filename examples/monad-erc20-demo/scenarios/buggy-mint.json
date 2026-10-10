@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "0.1",
+  "name": "token-buggy-mint",
+  "network": "local",
+  "actors": {
+    "deployer": "env:DEPLOYER_PRIVATE_KEY",
+    "alice": "env:ALICE_PRIVATE_KEY"
+  },
+  "nodes": [
+    {
+      "id": "deploy",
+      "type": "deploy",
+      "contract": "BuggyToken",
+      "args": [],
+      "after": []
+    },
+    {
+      "id": "mint",
+      "type": "call",
+      "from": "deployer",
+      "to": "deploy",
+      "fn": "mint",
+      "args": ["alice", "1000"],
+      "after": ["deploy"]
+    },
+    {
+      "id": "balance",
+      "type": "assert",
+      "check": {
+        "fn": "balanceOf",
+        "args": ["alice"],
+        "eq": "1000"
+      },
+      "after": ["mint"]
+    }
+  ]
+}
