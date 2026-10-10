@@ -5,7 +5,7 @@ export type ContractArtifact = {
   bytecode: Hex;
 };
 
-export type AdapterStatus = 'MISSING_ARTIFACT' | 'BUILD_FAILED' | 'UNSUPPORTED_TOOLCHAIN';
+export type AdapterStatus = 'MISSING_ARTIFACT' | 'BUILD_FAILED' | 'UNSUPPORTED_TOOLCHAIN' | 'MISSING_TOOL';
 
 export class AdapterError extends Error {
   readonly status: AdapterStatus;

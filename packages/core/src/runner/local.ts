@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import type { Hex } from 'viem';
 
 import { AdapterError, createFoundryAdapter, deployContractsFromScenario } from '../adapters/index.js';
+import { missingToolMessage, probeTool, toolExecutable } from '../tooling.js';
 import type { RunResult, Scenario } from '../schema/index.js';
 import { RunResultSchema } from '../schema/index.js';
 import { runScenario } from './index.js';
@@ -68,9 +69,13 @@ async function ephemeralPort(): Promise<number> {
 
 export function forgeBuild(foundryRoot: string): void {
   const root = resolve(foundryRoot);
-  const forge = process.env.FORGE_BIN ?? 'forge';
+  const forgeProbe = probeTool('forge');
+  if (!forgeProbe.available) {
+    throw new AdapterError('MISSING_TOOL', missingToolMessage('forge', forgeProbe), { path: root });
+  }
+  const forge = toolExecutable('forge');
   const result = spawnSync(forge, ['build', '--root', root], { encoding: 'utf8' });
-  if (result.status !== 0) {
+  if (result.error || result.status !== 0) {
     const detail = (result.stderr || result.stdout || 'forge build failed').trim();
     throw new AdapterError('BUILD_FAILED', `forge build --root ${root} failed.\n${detail}`, {
       path: root
@@ -86,7 +91,11 @@ export type FreshAnvilHandle = {
 
 export async function startFreshAnvil(accounts = 2): Promise<FreshAnvilHandle> {
   const port = await ephemeralPort();
-  const anvil = process.env.ANVIL_BIN ?? 'anvil';
+  const anvilProbe = probeTool('anvil');
+  if (!anvilProbe.available) {
+    throw new AdapterError('MISSING_TOOL', missingToolMessage('anvil', anvilProbe));
+  }
+  const anvil = toolExecutable('anvil');
   const child = spawn(anvil, ['--silent', '--port', String(port), '--accounts', String(accounts)], {
     stdio: 'ignore'
   });

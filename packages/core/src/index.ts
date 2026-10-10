@@ -17,3 +17,4 @@ export * from './capabilities/index.js';
 export * from './config/index.js';
 export * from './adapters/index.js';
 export * from './templates/index.js';
+export * from './tooling.js';

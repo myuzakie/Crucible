@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import test from 'node:test';
 
 import {
@@ -60,6 +60,23 @@ test('doctor reports missing local chain without secrets or raw errors', async (
   assert.equal(report.walletMode, 'fixture');
   assert.equal(report.localRpc.reachable, false);
   assert.doesNotMatch(formatDoctorReport(report), /ENOENT|PRIVATE_KEY|0x[a-fA-F0-9]{64}/i);
+});
+
+test('doctor reports missing Foundry tools with actionable guidance', async () => {
+  const report = await runDoctor({
+    root: resolve('examples/monad-erc721-demo'),
+    env: {
+      PATH: '',
+      FORGE_BIN: '/missing/forge',
+      ANVIL_BIN: '/missing/anvil'
+    },
+    probeRpc: async () => ({ reachable: false })
+  });
+  assert.equal(report.status, 'MISSING_TOOL');
+  assert.equal(report.tools.forge.available, false);
+  assert.equal(report.tools.anvil.available, false);
+  assert.match(report.nextSteps.join('\n'), /Foundry forge was not found/);
+  assert.doesNotMatch(report.nextSteps.join('\n'), /ENOENT|PRIVATE_KEY|0x[a-fA-F0-9]{64}/i);
 });
 
 test('doctor stays SUPPORTED_WITH_CONFIG when RPC is up and config is missing', async () => {
