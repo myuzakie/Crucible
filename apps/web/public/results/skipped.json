@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "0.1",
+  "runId": "fixture-skipped-001",
+  "scenario": "token-dependent-failure",
+  "status": "failed",
+  "score": 33,
+  "network": { "name": "local", "chainId": 31337 },
+  "startedAt": "2026-10-11T00:00:00.000Z",
+  "finishedAt": "2026-10-11T00:00:01.000Z",
+  "nodes": [
+    { "id": "deploy", "status": "failed", "durationMs": 10, "error": { "kind": "revert", "message": "deployment reverted" } },
+    { "id": "mint", "status": "skipped", "durationMs": 0 },
+    { "id": "balance", "status": "skipped", "durationMs": 0 }
+  ],
+  "summary": { "passed": 0, "failed": 1, "skipped": 2 }
+}

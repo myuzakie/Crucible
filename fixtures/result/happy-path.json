@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "0.1",
+  "runId": "fixture-happy-001",
+  "scenario": "token-happy-path",
+  "status": "passed",
+  "score": 100,
+  "network": {
+    "name": "local",
+    "chainId": 31337,
+    "explorerUrl": "https://testnet.monadexplorer.com"
+  },
+  "startedAt": "2026-10-11T00:00:00.000Z",
+  "finishedAt": "2026-10-11T00:00:02.000Z",
+  "nodes": [
+    {
+      "id": "deploy",
+      "status": "passed",
+      "durationMs": 820,
+      "txHash": "0xdeployhappy0000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "id": "mint",
+      "status": "passed",
+      "durationMs": 640,
+      "txHash": "0xminthappy00000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "id": "balance",
+      "status": "passed",
+      "durationMs": 20
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  }
+}
