@@ -2,6 +2,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { detectCapabilities } from '../capabilities/detect.js';
+import { missingToolMessage, probeTool } from '../tooling.js';
 import { DoctorReportSchema, type DoctorReport } from './schema.js';
 
 export type DoctorOptions = {
@@ -65,6 +66,10 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorRepo
   const localRpc = existsSync(root) ? await probe(rpcUrl) : { reachable: false };
   const fixtures = collectFixtureCandidates(root);
   const mode = walletMode(env);
+  const tools = {
+    forge: probeTool('forge', env),
+    anvil: probeTool('anvil', env)
+  };
   const version = process.version;
   const okNode = nodeOk(version);
 
@@ -76,6 +81,9 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorRepo
   ) {
     status = 'MISSING_LOCAL_CHAIN';
   }
+  if (capabilities.toolchain.foundry.detected && (!tools.forge.available || !tools.anvil.available)) {
+    status = 'MISSING_TOOL';
+  }
 
   const nextSteps: string[] = [];
   if (!okNode) nextSteps.push('Upgrade Node.js to v20 or newer.');
@@ -84,10 +92,16 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorRepo
   } else if (!capabilities.config.present) {
     nextSteps.push('Run crucible init to create crucible.config.json and a scenario template.');
   }
+  if (capabilities.toolchain.foundry.detected && !tools.forge.available) {
+    nextSteps.push(missingToolMessage('forge', tools.forge));
+  }
+  if (capabilities.toolchain.foundry.detected && !tools.anvil.available) {
+    nextSteps.push(missingToolMessage('anvil', tools.anvil));
+  }
   if (!capabilities.artifacts.present && capabilities.toolchain.foundry.detected) {
     nextSteps.push('Build contracts (forge build or the repo compile script).');
   }
-  if (!localRpc.reachable) {
+  if (!localRpc.reachable && tools.anvil.available) {
     nextSteps.push(
       `Run crucible test --local (starts a fresh Anvil), or start Anvil on ${rpcUrl} for crucible run.`
     );
@@ -110,7 +124,9 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorRepo
   const summary =
     status === 'MISSING_LOCAL_CHAIN'
       ? `Foundry project detected, but local RPC at ${rpcUrl} is not reachable.`
-      : capabilities.summary;
+      : status === 'MISSING_TOOL'
+        ? 'Foundry project detected, but required local tools are missing.'
+        : capabilities.summary;
 
   return DoctorReportSchema.parse({
     root,
@@ -122,6 +138,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorRepo
       foundry: capabilities.toolchain.foundry,
       hardhat: capabilities.toolchain.hardhat
     },
+    tools,
     artifacts: capabilities.artifacts,
     scenarios: capabilities.scenarios,
     config: {
@@ -155,6 +172,8 @@ export function formatDoctorReport(report: DoctorReport): string {
         ? `${report.toolchain.hardhat.configPaths.join(', ')} (unsupported)`
         : 'not detected'
     }`,
+    `Forge: ${report.tools.forge.available ? `${report.tools.forge.executable}${report.tools.forge.version ? ` (${report.tools.forge.version})` : ''}` : `${report.tools.forge.executable} unavailable`}`,
+    `Anvil: ${report.tools.anvil.available ? `${report.tools.anvil.executable}${report.tools.anvil.version ? ` (${report.tools.anvil.version})` : ''}` : `${report.tools.anvil.executable} unavailable`}`,
     `Artifacts: ${report.artifacts.present ? `${report.artifacts.candidates.length} candidate(s)` : 'missing'}`,
     `Scenarios: ${report.scenarios.present ? report.scenarios.candidates.join(', ') : 'missing'}`,
     `Config: ${report.config.present ? report.config.path : 'missing'}`,

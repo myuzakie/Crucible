@@ -21,7 +21,8 @@ export const DoctorReportSchema = z.object({
     'UNSUPPORTED_TOOLCHAIN',
     'MISSING_ARTIFACT',
     'MISSING_SCENARIO',
-    'MISSING_LOCAL_CHAIN'
+    'MISSING_LOCAL_CHAIN',
+    'MISSING_TOOL'
   ]),
   summary: z.string().min(1),
   node: z.object({
@@ -36,6 +37,20 @@ export const DoctorReportSchema = z.object({
   toolchain: z.object({
     foundry: z.object({ detected: z.boolean(), configPaths: z.array(z.string()) }),
     hardhat: z.object({ detected: z.boolean(), supported: z.literal(false), configPaths: z.array(z.string()) })
+  }),
+  tools: z.object({
+    forge: z.object({
+      available: z.boolean(),
+      executable: z.string().min(1),
+      version: z.string().optional(),
+      reason: z.string().optional()
+    }),
+    anvil: z.object({
+      available: z.boolean(),
+      executable: z.string().min(1),
+      version: z.string().optional(),
+      reason: z.string().optional()
+    })
   }),
   artifacts: z.object({ present: z.boolean(), candidates: z.array(z.string()) }),
   scenarios: z.object({ present: z.boolean(), candidates: z.array(z.string()) }),
