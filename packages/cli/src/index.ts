@@ -3,10 +3,11 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import { createCertificate, verifyCertificate } from '@crucible/certificate';
+import { CertificateRegistryAbi, createCertificate, verifyCertificate } from '@crucible/certificate';
 import { DiagnosisSchema } from '@crucible/ai';
-import { runScenario, ScenarioSchema, RunResultSchema } from '@crucible/core';
-import type { Hex } from 'viem';
+import { parsePrivateKey, runScenario, ScenarioSchema, RunResultSchema } from '@crucible/core';
+import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 
 function usage(): never {
   console.error(
@@ -15,7 +16,8 @@ function usage(): never {
       '  pnpm crucible validate <scenario.json>',
       '  pnpm crucible run <scenario.json> --network local [--rpc url] [--out result.json]',
       '  pnpm crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
-      '  pnpm crucible verify <certificate.json>'
+      '  pnpm crucible verify <certificate.json>',
+      '  pnpm crucible publish <certificate.json> --rpc url --registry 0x… [--key-env ENV] [--uri url] [--out certificate.json]'
     ].join('\n')
   );
   process.exit(1);
@@ -70,6 +72,45 @@ try {
     const outputPath = flag(args, '--out', 'certificate.json');
     await writeFile(resolve(outputPath), `${JSON.stringify(report, null, 2)}\n`);
     console.log(`SIGNED: ${report.reportId} — ${outputPath}`);
+    process.exit(0);
+  }
+
+  if (command === 'publish') {
+    const certificatePath = rest[0] ?? usage();
+    const args = rest.slice(1);
+    const report = verifyCertificate(await loadJson(certificatePath));
+    const rpcUrl = flag(args, '--rpc', process.env.LOCAL_RPC_URL ?? 'http://127.0.0.1:8545');
+    const registry = flag(args, '--registry');
+    if (!/^0x[a-fA-F0-9]{40}$/.test(registry)) throw new Error('Invalid --registry address.');
+    const keyEnv = flag(args, '--key-env', 'DEPLOYER_PRIVATE_KEY');
+    const account = privateKeyToAccount(parsePrivateKey(process.env[keyEnv], keyEnv));
+    const publicClient = createPublicClient({ transport: http(rpcUrl) });
+    const walletClient = createWalletClient({ account, transport: http(rpcUrl) });
+    const chainId = await publicClient.getChainId();
+    const expectedChainId = Number(flag(args, '--chain-id', String(chainId)));
+    if (chainId !== expectedChainId) throw new Error(`RPC chain ID ${chainId} does not match expected ${expectedChainId}.`);
+    const uri = flag(args, '--uri', `crucible://certificate/${report.reportId}`);
+    const transactionHash = await walletClient.writeContract({
+      address: registry as `0x${string}`,
+      abi: CertificateRegistryAbi,
+      functionName: 'register',
+      args: [`0x${report.contentHash}` as `0x${string}`, uri]
+    });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: transactionHash });
+    if (receipt.status !== 'success') throw new Error('Certificate registry transaction failed.');
+    const explorerBase = process.env.MONAD_EXPLORER_URL;
+    const published = {
+      ...report,
+      onChain: {
+        chainId,
+        registryAddress: registry,
+        transactionHash,
+        ...(explorerBase ? { explorerUrl: `${explorerBase.replace(/\/$/, '')}/tx/${transactionHash}` } : {})
+      }
+    };
+    const outputPath = flag(args, '--out', certificatePath);
+    await writeFile(resolve(outputPath), `${JSON.stringify(published, null, 2)}\n`);
+    console.log(`PUBLISHED: ${report.contentHash} — ${transactionHash}`);
     process.exit(0);
   }
 
