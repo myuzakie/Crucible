@@ -13,11 +13,11 @@ contract CertificateRegistryTest {
 
     function testRegisterStoresIssuerAndUri() public {
         registry.register(HASH, "ipfs://crucible/certificate");
-        (address issuer, uint64 timestamp, string memory uri, bool exists) = registry.get(HASH);
-        require(issuer == address(this), "issuer");
-        require(timestamp > 0, "timestamp");
-        require(keccak256(bytes(uri)) == keccak256(bytes("ipfs://crucible/certificate")), "uri");
-        require(exists, "exists");
+        CertificateRegistry.Record memory record = registry.get(HASH);
+        require(record.issuer == address(this), "issuer");
+        require(record.timestamp > 0, "timestamp");
+        require(keccak256(bytes(record.uri)) == keccak256(bytes("ipfs://crucible/certificate")), "uri");
+        require(record.exists, "exists");
     }
 
     function testCannotRegisterSameHashTwice() public {

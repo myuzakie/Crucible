@@ -41,7 +41,7 @@ async function main() {
     functionName: 'get',
     args: [contentHash]
   });
-  if (!record[3] || record[0].toLowerCase() !== account.address.toLowerCase()) {
+  if (!record.exists || record.issuer.toLowerCase() !== account.address.toLowerCase()) {
     throw new Error('Registry read-back did not match the publishing wallet.');
   }
   console.log(`CERTIFICATE REGISTRY: PASSED (chain ${chainId}, ${receipt.contractAddress}, ${transactionHash})`);

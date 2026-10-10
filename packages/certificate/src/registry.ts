@@ -16,12 +16,16 @@ export const CertificateRegistryAbi = [
     name: 'get',
     stateMutability: 'view',
     inputs: [{ name: 'contentHash', type: 'bytes32' }],
-    outputs: [
-      { name: 'issuer', type: 'address' },
-      { name: 'timestamp', type: 'uint64' },
-      { name: 'uri', type: 'string' },
-      { name: 'exists', type: 'bool' }
-    ]
+    outputs: [{
+      name: 'record',
+      type: 'tuple',
+      components: [
+        { name: 'issuer', type: 'address' },
+        { name: 'timestamp', type: 'uint64' },
+        { name: 'uri', type: 'string' },
+        { name: 'exists', type: 'bool' }
+      ]
+    }]
   }
 ] as const satisfies Abi;
 
