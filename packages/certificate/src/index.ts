@@ -13,6 +13,8 @@ import { DiagnosisSchema, type Diagnosis } from '@crucible/ai';
 import { RunResultSchema, ScenarioSchema, type RunResult, type Scenario } from '@crucible/core/schema';
 import { z } from 'zod';
 
+export * from './registry.js';
+
 export const CertificateReportSchema = z.object({
   schemaVersion: z.string().default('0.1'),
   reportId: z.string().min(1),
@@ -25,7 +27,15 @@ export const CertificateReportSchema = z.object({
     algorithm: z.literal('ed25519'),
     publicKey: z.string().min(1),
     value: z.string().min(1)
-  })
+  }),
+  onChain: z
+    .object({
+      chainId: z.number().int().positive(),
+      registryAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+      transactionHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+      explorerUrl: z.string().url().optional()
+    })
+    .optional()
 });
 
 export type CertificateReport = z.infer<typeof CertificateReportSchema>;

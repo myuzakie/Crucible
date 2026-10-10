@@ -33,8 +33,20 @@ jobs:
       - name: Build contract fixtures
         run: forge build --root examples/monad-erc20-demo
 
+      - name: Test certificate registry
+        run: forge test --root examples/monad-certificate-registry
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Test certificate registry on fresh Anvil
+        run: |
+          anvil --silent > /tmp/crucible-anvil.log 2>&1 &
+          ANVIL_PID=$!
+          trap 'kill $ANVIL_PID' EXIT
+          sleep 2
+          forge build --root examples/monad-certificate-registry
+          pnpm test:registry:local
 
       - name: Lint
         run: pnpm lint

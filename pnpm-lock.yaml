@@ -212,6 +212,8 @@ importers:
 
   examples/monad-erc20-demo: {}
 
+  examples/monad-certificate-registry: {}
+
   packages/ai:
     dependencies:
       '@crucible/core':
@@ -229,6 +231,9 @@ importers:
       '@crucible/core':
         specifier: workspace:*
         version: link:../core
+      viem:
+        specifier: ^2.57.4
+        version: 2.57.4(typescript@5.9.3)(zod@4.6.5)
       zod:
         specifier: ^4.6.5
         version: 4.6.5
