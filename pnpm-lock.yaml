@@ -214,6 +214,8 @@ importers:
 
   examples/monad-certificate-registry: {}
 
+  examples/monad-erc721-demo: {}
+
   packages/ai:
     dependencies:
       '@crucible/core':
