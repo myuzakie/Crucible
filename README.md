@@ -38,6 +38,12 @@ Known limits: the AI panel uses a deterministic cached diagnosis; live testnet d
 
 The Web tries `/api/diagnose` for a configured server-side provider and falls back to the cached diagnosis when the endpoint is unavailable. Configure `AI_API_KEY`, `AI_MODEL`, and optional `AI_API_URL` only in the server/hosting environment; never use `VITE_*` variables for these values. The endpoint validates every model response against the RunResult evidence contract and applies an 8-second timeout.
 
+## Hosted Web (Vercel)
+
+`vercel.json` contains the monorepo build settings. Import `myuzakie/Crucible` into Vercel with the repository root as the project root. Vercel Git integration provides a Preview deployment for each pull request and a Production deployment from `main`; no Vercel token is stored in GitHub Actions.
+
+Set `AI_API_KEY`, `AI_MODEL`, and optional `AI_API_URL` as Vercel server environment variables when live diagnosis is wanted. Do not create `VITE_*` versions of these variables. The public Web bundle is checked by `pnpm web:check` and must contain no RPC endpoint or private-key marker. Fixture diagnosis remains available if the API is not configured.
+
 ## Runtime modes
 
 | Mode | Command / entry | Needs secrets? |
