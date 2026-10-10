@@ -201,6 +201,8 @@ importers:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@24.19.1)(esbuild@0.28.2)(tsx@4.23.15)
 
+  examples/monad-erc20-demo: {}
+
   packages/cli: {}
 
   packages/core:
