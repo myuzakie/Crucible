@@ -26,6 +26,16 @@ DEPLOYER_PRIVATE_KEY=<anvil-key> ALICE_PRIVATE_KEY=<anvil-key> \
 
 Use `--rpc <url>` or `LOCAL_RPC_URL` when Anvil runs on another port. The buggy scenario exits non-zero after writing its failed `RunResult`.
 
+## Monad Testnet smoke test
+
+Use dedicated faucet-funded test wallets, put the variables from `.env.example` in `.env`, then run:
+
+```bash
+pnpm test:smoke:monad
+```
+
+The command validates chain ID `10143`, derives public addresses from the keys, runs the same deploy/call/assert path, and prints explorer links. It writes the safe result to `/tmp/crucible-monad-smoke-result.json` by default. Missing RPC access or faucet funds is reported as `LIVE SMOKE: BLOCKED`.
+
 ## Repository flow
 
 ```text

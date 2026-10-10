@@ -20,6 +20,7 @@ export type RunScenarioOptions = {
   rpcUrl?: string;
   chainId?: number;
   networkName?: string;
+  explorerUrl?: string;
 };
 
 function localChain(rpcUrl: string, chainId: number) {
@@ -61,11 +62,12 @@ function resolveValue(value: unknown, addresses: Record<string, Address>, nodeAd
   return value;
 }
 
-function receiptSummary(receipt: { status: string; blockNumber: bigint; gasUsed: bigint }) {
+function receiptSummary(receipt: { status: string; blockNumber: bigint; gasUsed: bigint; contractAddress?: Address | null }) {
   return {
     status: receipt.status,
     blockNumber: receipt.blockNumber.toString(),
-    gasUsed: receipt.gasUsed.toString()
+    gasUsed: receipt.gasUsed.toString(),
+    ...(receipt.contractAddress ? { contractAddress: receipt.contractAddress } : {})
   };
 }
 
@@ -81,8 +83,6 @@ export async function runScenario(options: RunScenarioOptions): Promise<RunResul
   const nodeAddresses: Record<string, Address> = {};
   const nodeArtifacts: Record<string, Artifact> = {};
   const results: NodeResult[] = [];
-  const byId = new Map(options.scenario.nodes.map((node) => [node.id, node]));
-
   for (const node of topologicalOrder(options.scenario.nodes)) {
     const started = Date.now();
     const dependencyFailed = node.after.some((id) => results.find((result) => result.id === id)?.status !== 'passed');
@@ -104,6 +104,7 @@ export async function runScenario(options: RunScenarioOptions): Promise<RunResul
           account
         });
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== 'success') throw new Error(`Deploy ${node.id} transaction reverted`);
         if (!receipt.contractAddress) throw new Error(`Deploy ${node.id} returned no contract address`);
         nodeAddresses[node.id] = receipt.contractAddress;
         nodeArtifacts[node.id] = artifact;
@@ -122,6 +123,7 @@ export async function runScenario(options: RunScenarioOptions): Promise<RunResul
           account
         });
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== 'success') throw new Error(`Call ${node.id} transaction reverted`);
         nodeAddresses[node.id] = address;
         nodeArtifacts[node.id] = artifact;
         results.push({ id: node.id, status: 'passed', durationMs: Date.now() - started, txHash: hash, receipt: receiptSummary(receipt) });
@@ -169,7 +171,11 @@ export async function runScenario(options: RunScenarioOptions): Promise<RunResul
     scenario: options.scenario.name,
     status: summary.failed ? 'failed' : 'passed',
     score: Math.round((summary.passed / results.length) * 100),
-    network: { name: options.networkName ?? 'local', chainId },
+    network: {
+      name: options.networkName ?? 'local',
+      chainId,
+      ...(options.explorerUrl ? { explorerUrl: options.explorerUrl } : {})
+    },
     startedAt: new Date(Date.now() - results.reduce((total, result) => total + result.durationMs, 0)).toISOString(),
     finishedAt: new Date().toISOString(),
     nodes: results,
