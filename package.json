@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test",
+    "demo:check": "tsx scripts/demo-check.ts",
     "test:smoke:monad": "node --env-file-if-exists=.env --import tsx scripts/smoke-monad.ts",
     "build": "tsc --noEmit && pnpm --filter @crucible/web build",
     "crucible": "tsx packages/cli/src/index.ts"
