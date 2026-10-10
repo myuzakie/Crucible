@@ -7,6 +7,8 @@
     "crucible": "./src/index.ts"
   },
   "dependencies": {
+    "@crucible/ai": "workspace:*",
+    "@crucible/certificate": "workspace:*",
     "@crucible/core": "workspace:*",
     "viem": "^2.57.4"
   }

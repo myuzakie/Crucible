@@ -99,6 +99,25 @@ export function App() {
     setReplayIndex(0);
   }
 
+  async function downloadCertificate() {
+    if (result?.scenario !== 'token-buggy-mint') {
+      setDiagnosisError('Certificate offline hanya tersedia untuk token-buggy-mint.');
+      return;
+    }
+    const response = await fetch('/certificate/buggy-mint.json');
+    if (!response.ok) {
+      setDiagnosisError(`Certificate fixture tidak ditemukan (${response.status}).`);
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'crucible-certificate-buggy-mint.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="shell">
       <header className="topbar">
@@ -163,7 +182,13 @@ export function App() {
           </section>
           {result.status === 'failed' ? (
             <section className="panel diagnosis-panel" aria-live="polite">
-              <div className="panel-heading"><div><p className="eyebrow">AI-ASSISTED DEBUGGING</p><h2>Diagnosis</h2></div><span>{diagnosis ? `${Math.round(diagnosis.confidence * 100)}% confidence` : 'offline fallback'}</span></div>
+              <div className="panel-heading">
+                <div><p className="eyebrow">AI-ASSISTED DEBUGGING</p><h2>Diagnosis</h2></div>
+                <div className="flow-actions">
+                  <span>{diagnosis ? `${Math.round(diagnosis.confidence * 100)}% confidence` : 'offline fallback'}</span>
+                  {diagnosis ? <button type="button" onClick={() => void downloadCertificate()}>Download certificate</button> : null}
+                </div>
+              </div>
               {diagnosis ? (
                 <div className="diagnosis-grid">
                   <div><span className="diagnosis-label">Root cause</span><p>{diagnosis.rootCause}</p></div>
