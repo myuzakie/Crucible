@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "0.1",
+  "runId": "fixture-buggy-001",
+  "scenario": "token-buggy-mint",
+  "status": "failed",
+  "score": 66,
+  "network": {
+    "name": "local",
+    "chainId": 31337,
+    "explorerUrl": "https://testnet.monadexplorer.com"
+  },
+  "startedAt": "2026-10-11T00:00:00.000Z",
+  "finishedAt": "2026-10-11T00:00:02.000Z",
+  "nodes": [
+    {
+      "id": "deploy",
+      "status": "passed",
+      "durationMs": 820,
+      "txHash": "0xdeploybuggy0000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "id": "mint",
+      "status": "passed",
+      "durationMs": 640,
+      "txHash": "0xmintbuggy00000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "id": "balance",
+      "status": "failed",
+      "durationMs": 20,
+      "error": {
+        "kind": "assertion",
+        "expected": "1000",
+        "actual": "0",
+        "message": "balanceOf(alice) tidak sesuai setelah mint"
+      }
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 1,
+    "skipped": 0
+  }
+}
