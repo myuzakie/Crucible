@@ -13,8 +13,8 @@
     "test:contracts": "forge test --root examples/monad-erc20-demo && forge test --root examples/monad-certificate-registry",
     "test:registry:local": "node --import tsx scripts/smoke-certificate-registry.ts",
     "build": "tsc --noEmit && pnpm --filter @crucible/web build && pnpm web:check",
-    "cli:build": "pnpm --filter @crucible/cli build",
-    "cli:pack": "pnpm --filter @crucible/cli pack",
+    "cli:build": "pnpm --filter @ohmuzakie/crucible-cli build",
+    "cli:pack": "pnpm --filter @ohmuzakie/crucible-cli pack",
     "web:check": "tsx scripts/web-deploy-check.ts",
     "crucible": "tsx packages/cli/src/index.ts"
   },
