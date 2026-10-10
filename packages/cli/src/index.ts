@@ -35,6 +35,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 
 import { isLocalTestCommand, localTestUsage } from './command-contract.js';
 import { startWebViewer } from './web.js';
+import { formatTestnetResult, runMonadTestnetTest } from './testnet.js';
 
 function usage(): never {
   console.error(
@@ -44,6 +45,8 @@ function usage(): never {
       '  pnpm crucible doctor [--root path] [--json]',
       '  pnpm crucible init [--root path] [--json]',
       '  pnpm crucible test [--local] [--scenario path] [--root path] [--foundry-root path] [--out path] [--verbose|--json]',
+      '  pnpm crucible test --network monad-testnet --dry-run [--scenario path] [--root path] [--foundry-root path]',
+      '  pnpm crucible test --network monad-testnet --confirm-testnet [--scenario path] [--root path] [--foundry-root path] [--out path]',
       '  pnpm crucible scenario create [--root path] [--foundry-root path] [--contract name] [--call fn] [--assert fn] [--yes]',
       '  pnpm crucible web --result <result.json> [--port 5173]',
       '  pnpm crucible validate <scenario-or-template.json>',
@@ -264,6 +267,24 @@ try {
   }
 
   if (command === 'test') {
+    if (rest.includes('--network') && flag(rest, '--network') === 'monad-testnet') {
+      const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
+      const scenarioPath = rest.includes('--scenario') ? flag(rest, '--scenario') : undefined;
+      if (!scenarioPath) throw new Error('Missing --scenario for Monad Testnet. Use a real business scenario; Crucible will not invent one.');
+      const { foundryRoot, artifactDir } = await resolveFoundryRoot(rest, root);
+      const result = await runMonadTestnetTest({
+        scenario: await loadScenario(resolve(root, scenarioPath)),
+        foundryRoot,
+        artifactDir,
+        rpcUrl: rest.includes('--rpc') ? flag(rest, '--rpc') : undefined,
+        outPath: rest.includes('--out') ? flag(rest, '--out') : undefined,
+        confirmed: rest.includes('--confirm-testnet'),
+        dryRun: rest.includes('--dry-run')
+      });
+      if (rest.includes('--json')) console.log(JSON.stringify(result, null, 2));
+      else console.log(formatTestnetResult(result));
+      process.exit(result.status === 'PASSED' || result.status === 'TESTNET_DRY_RUN' ? 0 : 1);
+    }
     if (!isLocalTestCommand(rest)) {
       throw new Error(`Only local testing is available. ${localTestUsage()}`);
     }
