@@ -4,6 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
   }
 }
