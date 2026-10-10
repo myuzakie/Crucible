@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "0.1",
+  "name": "collectible-missing-owner",
+  "network": "local",
+  "actors": {
+    "deployer": "env:DEPLOYER_PRIVATE_KEY",
+    "alice": "env:ALICE_PRIVATE_KEY"
+  },
+  "nodes": [
+    { "id": "deploy", "type": "deploy", "contract": "Collectible", "args": [], "after": [] },
+    { "id": "owner", "type": "assert", "check": { "fn": "ownerOf", "args": ["999"], "eq": "alice" }, "after": ["deploy"] }
+  ]
+}
