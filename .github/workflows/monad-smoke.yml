@@ -1,0 +1,61 @@
+name: Monad Smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monad-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MONAD_TESTNET_RPC_URL: ${{ secrets.MONAD_TESTNET_RPC_URL }}
+      MONAD_CHAIN_ID: ${{ secrets.MONAD_CHAIN_ID }}
+      DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+      ALICE_PRIVATE_KEY: ${{ secrets.ALICE_PRIVATE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Monad secrets
+        run: pnpm exec tsx scripts/validate-monad-env.ts
+
+      - name: Build contract fixtures
+        run: forge build --root examples/monad-erc20-demo
+
+      - name: Run Monad smoke
+        run: pnpm test:smoke:monad
+
+      - name: Upload smoke result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monad-smoke-${{ github.run_id }}
+          path: /tmp/crucible-monad-smoke-result.json
+          if-no-files-found: ignore
+          retention-days: 7
