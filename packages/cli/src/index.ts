@@ -1,11 +1,28 @@
 #!/usr/bin/env node
 
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 
 import { CertificateRegistryAbi, createCertificate, verifyCertificate } from '@crucible/certificate';
 import { DiagnosisSchema } from '@crucible/ai';
-import { parsePrivateKey, runScenario, ScenarioSchema, RunResultSchema } from '@crucible/core';
+import {
+  AdapterError,
+  CrucibleConfigSchema,
+  createFoundryAdapter,
+  deployContractsFromScenario,
+  detectCapabilities,
+  formatCapabilityReport,
+  formatDoctorReport,
+  formatInitResult,
+  initCrucible,
+  parsePrivateKey,
+  resolveScenarioDocument,
+  runDoctor,
+  runLocalTest,
+  runScenario,
+  RunResultSchema,
+  type Scenario
+} from '@crucible/core';
 import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -13,8 +30,12 @@ function usage(): never {
   console.error(
     [
       'Usage:',
-      '  pnpm crucible validate <scenario.json>',
-      '  pnpm crucible run <scenario.json> --network local [--rpc url] [--out result.json]',
+      '  pnpm crucible detect [--root path] [--json]',
+      '  pnpm crucible doctor [--root path] [--json]',
+      '  pnpm crucible init [--root path] [--json]',
+      '  pnpm crucible test --local [--scenario path] [--root path] [--foundry-root path] [--out path]',
+      '  pnpm crucible validate <scenario-or-template.json>',
+      '  pnpm crucible run <scenario.json> --network local [--foundry-root path] [--rpc url] [--out result.json]',
       '  pnpm crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
       '  pnpm crucible verify <certificate.json>',
       '  pnpm crucible publish <certificate.json> --rpc url --registry 0x… [--key-env ENV] [--uri url] [--out certificate.json]'
@@ -36,30 +57,95 @@ async function loadJson(path: string) {
   return JSON.parse(await readFile(resolve(path), 'utf8'));
 }
 
-async function loadScenario(path: string) {
-  return ScenarioSchema.parse(await loadJson(path));
+async function loadScenario(path: string): Promise<Scenario> {
+  return resolveScenarioDocument(await loadJson(path));
 }
 
-async function loadArtifact(contract: string) {
-  const paths = [
-    resolve(`examples/monad-erc20-demo/out/${contract}.sol/${contract}.json`),
-    resolve(`examples/monad-erc721-demo/out/${contract}.sol/${contract}.json`)
-  ];
-  for (const path of paths) {
-    try {
-      const artifact = JSON.parse(await readFile(path, 'utf8'));
-      return { abi: artifact.abi, bytecode: artifact.bytecode.object as Hex };
-    } catch {
-      // Try the next example contract location.
-    }
+async function loadCrucibleConfig(cwd: string) {
+  try {
+    return CrucibleConfigSchema.parse(await loadJson(resolve(cwd, 'crucible.config.json')));
+  } catch {
+    return undefined;
   }
-  throw new Error(`Artifact not found for contract ${contract}. Build the matching Foundry example first.`);
+}
+
+async function resolveFoundryRoot(args: string[], cwd = process.cwd()): Promise<{ foundryRoot: string; artifactDir: string }> {
+  if (args.includes('--foundry-root')) {
+    return { foundryRoot: resolve(cwd, flag(args, '--foundry-root')), artifactDir: 'out' };
+  }
+  const config = await loadCrucibleConfig(cwd);
+  if (config) {
+    return { foundryRoot: resolve(cwd, config.foundryRoot), artifactDir: config.artifactDir };
+  }
+  throw new Error(
+    'Missing Foundry root. Pass --foundry-root <path> or run crucible init to create crucible.config.json.'
+  );
+}
+
+async function resolveScenarioPath(args: string[], cwd: string): Promise<string> {
+  if (args.includes('--scenario')) return resolve(flag(args, '--scenario'));
+  const config = await loadCrucibleConfig(cwd);
+  if (config?.scenario) return resolve(cwd, config.scenario);
+  throw new Error(
+    'Missing scenario. Pass --scenario <path> or set "scenario" in crucible.config.json (run crucible init).'
+  );
 }
 
 const [command, ...rest] = process.argv.slice(2);
 if (!command) usage();
 
 try {
+  if (command === 'detect') {
+    const root = rest.includes('--root') ? flag(rest, '--root') : process.cwd();
+    const report = detectCapabilities(root);
+    if (rest.includes('--json')) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.log(formatCapabilityReport(report));
+    }
+    process.exit(0);
+  }
+
+  if (command === 'doctor') {
+    const root = rest.includes('--root') ? flag(rest, '--root') : process.cwd();
+    const report = await runDoctor({ root });
+    if (rest.includes('--json')) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.log(formatDoctorReport(report));
+    }
+    process.exit(0);
+  }
+
+  if (command === 'init') {
+    const root = rest.includes('--root') ? flag(rest, '--root') : process.cwd();
+    const result = initCrucible(root);
+    if (rest.includes('--json')) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(formatInitResult(result));
+    }
+    process.exit(0);
+  }
+
+  if (command === 'test') {
+    if (!rest.includes('--local')) {
+      throw new Error('Only --local is available. Use: pnpm crucible test --local');
+    }
+    const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
+    const scenarioPath = await resolveScenarioPath(rest, root);
+    const { foundryRoot, artifactDir } = await resolveFoundryRoot(rest, root);
+    const scenario = await loadScenario(scenarioPath);
+    const result = await runLocalTest({ scenario, foundryRoot, artifactDir });
+    const outputPath = resolve(flag(rest, '--out', 'result.json'));
+    await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`);
+    const webFile = basename(outputPath);
+    console.log(`${result.status.toUpperCase()}: ${result.scenario}`);
+    console.log(`Result: ${outputPath}`);
+    console.log(`Web path: /results/${webFile} (copy into apps/web/public/results/, then pnpm --filter @crucible/web dev)`);
+    process.exit(result.status === 'passed' ? 0 : 1);
+  }
+
   if (command === 'verify') {
     const certificatePath = rest[0] ?? usage();
     const report = verifyCertificate(await loadJson(certificatePath));
@@ -130,7 +216,13 @@ try {
   const scenario = await loadScenario(scenarioPath);
 
   if (command === 'validate') {
-    console.log(`Valid scenario: ${scenario.name} (${scenario.nodes.length} nodes)`);
+    const flow = scenario.metadata?.label ?? scenario.metadata?.businessFlow;
+    const graph = scenario.nodes.map((node) => node.id).join(' -> ');
+    console.log(
+      flow
+        ? `Valid scenario: ${scenario.name} [${flow}] (${graph})`
+        : `Valid scenario: ${scenario.name} (${scenario.nodes.length} nodes)`
+    );
     process.exit(0);
   }
   if (command !== 'run') usage();
@@ -138,13 +230,9 @@ try {
   const network = flag(args, '--network', 'local');
   if (network !== 'local') throw new Error('Only --network local is available.');
   const rpcUrl = flag(args, '--rpc', process.env.LOCAL_RPC_URL ?? 'http://127.0.0.1:8545');
-  const artifacts = Object.fromEntries(
-    await Promise.all(
-      [...new Set(scenario.nodes.filter((node) => node.type === 'deploy').map((node) => node.contract))].map(
-        async (contract) => [contract, await loadArtifact(contract)] as const
-      )
-    )
-  );
+  const { foundryRoot, artifactDir } = await resolveFoundryRoot(args);
+  const adapter = createFoundryAdapter({ foundryRoot, artifactDir });
+  const artifacts = adapter.loadArtifacts(deployContractsFromScenario(scenario.nodes));
   const accounts = Object.fromEntries(
     Object.entries(scenario.actors).map(([name, reference]) => {
       const envName = reference.replace(/^env:/, '');
@@ -159,6 +247,10 @@ try {
   console.log(`${result.status.toUpperCase()}: ${result.scenario} — ${outputPath}`);
   process.exit(result.status === 'passed' ? 0 : 1);
 } catch (error) {
+  if (error instanceof AdapterError) {
+    console.error(`${error.status}: ${error.message}`);
+    process.exit(1);
+  }
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 }

@@ -41,12 +41,20 @@ export const ScenarioNodeSchema = z.discriminatedUnion('type', [
   AssertNodeSchema
 ]);
 
+export const ScenarioMetadataSchema = z
+  .object({
+    businessFlow: z.string().min(1).optional(),
+    label: z.string().min(1).optional()
+  })
+  .strict();
+
 export const ScenarioSchema = z
   .object({
     schemaVersion: z.string().default('0.1'),
     name: z.string().min(1),
     network: z.string().min(1),
     actors: z.record(z.string(), z.string().min(1)),
+    metadata: ScenarioMetadataSchema.optional(),
     nodes: z.array(ScenarioNodeSchema).min(1)
   })
   .superRefine((scenario, ctx) => {
@@ -117,6 +125,7 @@ export const RunResultSchema = z.object({
 
 export type Scenario = z.infer<typeof ScenarioSchema>;
 export type ScenarioNode = z.infer<typeof ScenarioNodeSchema>;
+export type ScenarioMetadata = z.infer<typeof ScenarioMetadataSchema>;
 export type ExecutionError = z.infer<typeof ExecutionErrorSchema>;
 export type NodeResult = z.infer<typeof NodeResultSchema>;
 export type RunResult = z.infer<typeof RunResultSchema>;

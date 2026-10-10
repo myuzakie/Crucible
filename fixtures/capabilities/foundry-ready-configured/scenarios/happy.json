@@ -1,0 +1,1 @@
+{"schemaVersion":"0.1","name":"demo","network":"local","actors":{"alice":"env:ALICE_PRIVATE_KEY"},"nodes":[{"id":"deploy","type":"deploy","contract":"Token","args":[],"after":[]}]}

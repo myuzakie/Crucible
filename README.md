@@ -14,6 +14,30 @@ pnpm build
 
 Tidak membutuhkan RPC, wallet, atau secret.
 
+## External repo onboarding (local)
+
+Untuk repository Foundry eksternal (target pertama: `monad-developers/scaffold-monad-foundry`):
+
+```bash
+pnpm crucible doctor --root /path/to/repo
+pnpm crucible init --root /path/to/repo
+pnpm crucible test --local --root /path/to/repo
+```
+
+- `doctor` hanya membaca: Node, package manager, toolchain, artifact/scenario/config, local RPC, wallet mode, dan fixture fallback.
+- `init` menulis `crucible.config.json` + template `scenarios/crucible-smoke.json` bila belum ada; tidak menimpa file user dan tidak menulis secret.
+- `test --local` menjalankan `forge build`, spawn Anvil fresh (port ephemeral), eksekusi scenario, tulis RunResult, lalu kill Anvil — tanpa faucet, Monad RPC, atau private key user (akun Anvil default).
+- Artifact Foundry dimuat lewat adapter eksplisit (`--foundry-root` atau `crucible.config.json`); tidak menebak contract/network.
+- Template bisnis pertama: `mint NFT` (`fixtures/scenarios/mint-nft.json`) → expand ke `deploy -> mint -> ownerOf`.
+
+```bash
+pnpm crucible validate fixtures/scenarios/mint-nft.json
+pnpm crucible test --local \
+  --scenario examples/monad-erc721-demo/scenarios/mint-nft.json \
+  --foundry-root examples/monad-erc721-demo \
+  --out result.json
+```
+
 ## Demo freeze / final check
 
 Run the deterministic gate before a demo:
@@ -51,7 +75,7 @@ Do not import `.env.example` wholesale into Vercel. The Web viewer does not need
 | Mode | Command / entry | Needs secrets? |
 |---|---|---|
 | `unit` | `pnpm test` | No |
-| `local` | Anvil + `pnpm crucible run … --network local` | Anvil test keys only |
+| `local` | `pnpm crucible test --local` (or `run --network local`) | No user keys for `test --local` |
 | `fixture` | `pnpm --filter @crucible/web dev` | No |
 | `monad-testnet` | `pnpm test:smoke:monad` | Yes (manual/nightly) |
 
