@@ -34,6 +34,7 @@ import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
 import { isLocalTestCommand, localTestUsage } from './command-contract.js';
+import { startWebViewer } from './web.js';
 
 function usage(): never {
   console.error(
@@ -209,6 +210,24 @@ try {
     const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
     await runScenarioCreate(rest.slice(1), root);
     process.exit(0);
+  }
+
+  if (command === 'web') {
+    const resultPath = flag(rest, '--result');
+    const port = Number(flag(rest, '--port', '5173'));
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid --port. Use a number between 0 and 65535.');
+    const viewer = await startWebViewer({ resultPath, port });
+    console.log('CRUCIBLE WEB VIEWER');
+    console.log(`URL: ${viewer.url}`);
+    console.log('Result: loaded locally without RPC or private keys.');
+    console.log('Press Ctrl+C to stop.');
+    const stop = async () => {
+      await viewer.close();
+      process.exit(0);
+    };
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+    await new Promise<void>(() => undefined);
   }
 
   if (command === 'detect') {

@@ -37,6 +37,8 @@ Output default hanya menampilkan hal yang perlu dilakukan developer. Gunakan `--
 pnpm crucible test --root /path/to/repo
 pnpm crucible test --root /path/to/repo --verbose
 pnpm crucible test --root /path/to/repo --json > crucible-result.json
+pnpm crucible scenario create --root /path/to/repo
+pnpm crucible web --result /path/to/repo/result.json
 ```
 
 Untuk clean clone yang belum memiliki command `crucible`, jalankan dari repository Crucible dengan `--root` seperti contoh di atas. Setelah package CLI dipublikasikan, command yang sama dapat dijalankan langsung dari repository dApp.
