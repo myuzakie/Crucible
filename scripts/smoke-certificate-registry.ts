@@ -22,6 +22,7 @@ async function main() {
   const walletClient = createWalletClient({ account, transport });
   const chainId = await publicClient.getChainId();
   const registry = await walletClient.deployContract({
+    chain: null,
     abi: artifact.abi,
     bytecode: artifact.bytecode.object as Hex
   });
@@ -29,6 +30,7 @@ async function main() {
   if (!receipt.contractAddress) throw new Error('Registry deployment did not return an address.');
   const contentHash = `0x${report.contentHash}` as Hex;
   const transactionHash = await walletClient.writeContract({
+    chain: null,
     address: receipt.contractAddress,
     abi: CertificateRegistryAbi,
     functionName: 'register',

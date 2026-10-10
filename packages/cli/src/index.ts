@@ -91,6 +91,7 @@ try {
     if (chainId !== expectedChainId) throw new Error(`RPC chain ID ${chainId} does not match expected ${expectedChainId}.`);
     const uri = flag(args, '--uri', `crucible://certificate/${report.reportId}`);
     const transactionHash = await walletClient.writeContract({
+      chain: null,
       address: registry as `0x${string}`,
       abi: CertificateRegistryAbi,
       functionName: 'register',
