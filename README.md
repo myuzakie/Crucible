@@ -12,6 +12,20 @@ pnpm test
 pnpm build
 ```
 
+## Local runner
+
+Build the demo contracts, start Anvil, then run a scenario with test-only keys from Anvil:
+
+```bash
+forge build --root examples/monad-erc20-demo
+anvil
+DEPLOYER_PRIVATE_KEY=<anvil-key> ALICE_PRIVATE_KEY=<anvil-key> \
+  pnpm crucible run examples/monad-erc20-demo/scenarios/happy-path.json \
+  --network local --out result.json
+```
+
+Use `--rpc <url>` or `LOCAL_RPC_URL` when Anvil runs on another port. The buggy scenario exits non-zero after writing its failed `RunResult`.
+
 ## Repository flow
 
 ```text
