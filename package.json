@@ -10,7 +10,8 @@
     "test": "tsx --test",
     "demo:check": "tsx scripts/demo-check.ts",
     "test:smoke:monad": "node --env-file-if-exists=.env --import tsx scripts/smoke-monad.ts",
-    "build": "tsc --noEmit && pnpm --filter @crucible/web build",
+    "build": "tsc --noEmit && pnpm --filter @crucible/web build && pnpm web:check",
+    "web:check": "tsx scripts/web-deploy-check.ts",
     "crucible": "tsx packages/cli/src/index.ts"
   },
   "devDependencies": {
