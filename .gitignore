@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+CRUCIBLE_context_project/
+!CRUCIBLE_context_project.zip
+out/
+cache/
+broadcast/
+.DS_Store
+
