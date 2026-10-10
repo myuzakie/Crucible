@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "0.1",
+  "runId": "fixture-erc721-001",
+  "scenario": "collectible-happy-path",
+  "status": "passed",
+  "score": 100,
+  "network": { "name": "local", "chainId": 31337 },
+  "startedAt": "2026-10-11T00:00:00.000Z",
+  "finishedAt": "2026-10-11T00:00:01.000Z",
+  "nodes": [
+    { "id": "deploy", "status": "passed", "durationMs": 500 },
+    { "id": "mint", "status": "passed", "durationMs": 300 },
+    { "id": "owner", "status": "passed", "durationMs": 10 }
+  ],
+  "summary": { "passed": 3, "failed": 0, "skipped": 0 }
+}

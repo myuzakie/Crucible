@@ -31,7 +31,12 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Build contract fixtures
-        run: forge build --root examples/monad-erc20-demo
+        run: |
+          forge build --root examples/monad-erc20-demo
+          forge build --root examples/monad-erc721-demo
+
+      - name: Test ERC-721 example
+        run: forge test --root examples/monad-erc721-demo
 
       - name: Test certificate registry
         run: forge test --root examples/monad-certificate-registry
