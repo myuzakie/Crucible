@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 
 import type { Abi } from 'viem';
 
@@ -122,7 +122,12 @@ export function contractSelectionReason(name: string, artifactPath = ''): string
   if (/(^|\/)test(\/|$)|\.t\.sol\//i.test(normalized) || /test/i.test(name)) {
     return 'test contract, skipped';
   }
-  if (/(^|\/)(lib|interfaces)(\/|$)/i.test(normalized) || NON_APPLICATION_NAMES.test(name) || /^(?:Std|Lib|I[A-Z])/.test(name)) {
+  if (
+    /(^|\/)(lib|interfaces|base)(\/|$)/i.test(normalized) ||
+    /(?:^|\/)(?:Base|Script|Test|CommonBase)\.sol\//i.test(normalized) ||
+    NON_APPLICATION_NAMES.test(name) ||
+    /^(?:std|lib|vm|console|safeconsole|byteslib|I[A-Z])/i.test(name)
+  ) {
     return 'library/interface, skipped';
   }
   if (/(^|\/)src(\/|$)/i.test(normalized)) return 'application contract';
@@ -133,12 +138,33 @@ function isPreferredApplicationContract(contract: ScenarioContract): boolean {
   return contract.selectionReason === 'application contract' || contract.selectionReason === 'compiled application contract';
 }
 
-export function listScenarioContracts(rootInput = process.cwd(), foundryRootInput?: string): ScenarioContract[] {
+function artifactCandidatesFor(root: string, foundryRoot: string, artifactDir: string): string[] {
+  const outDir = resolve(root, foundryRoot, artifactDir);
+  if (!existsSync(outDir)) return [];
+  const candidates: string[] = [];
+  for (const contractDir of readdirSync(outDir, { withFileTypes: true })) {
+    if (!contractDir.isDirectory() || contractDir.name === 'build-info') continue;
+    const nested = join(outDir, contractDir.name);
+    for (const file of readdirSync(nested, { withFileTypes: true })) {
+      if (file.isFile() && file.name.endsWith('.json')) {
+        candidates.push(relative(root, join(nested, file.name)));
+      }
+    }
+  }
+  return candidates.sort();
+}
+
+export function listScenarioContracts(
+  rootInput = process.cwd(),
+  foundryRootInput?: string,
+  artifactDir = 'out'
+): ScenarioContract[] {
   const root = resolve(rootInput);
   const report = detectCapabilities(root);
   const foundryRoot = foundryRootInput ?? (report.toolchain.foundry.configPaths[0]?.split('/').slice(0, -1).join('/') || '.');
   const contracts: ScenarioContract[] = [];
-  for (const candidate of report.artifacts.candidates) {
+  const candidates = artifactCandidatesFor(root, foundryRoot, artifactDir);
+  for (const candidate of candidates) {
     const name = basename(candidate, '.json');
     try {
       const contract = readContractArtifact(resolve(root, candidate), name);
@@ -147,7 +173,7 @@ export function listScenarioContracts(rootInput = process.cwd(), foundryRootInpu
       // Library/test artifacts are intentionally skipped from the wizard list.
     }
   }
-  if (!contracts.length && report.artifacts.candidates.length === 0) {
+  if (!contracts.length && candidates.length === 0) {
     throw new Error(`No compiled contract artifacts found. Run forge build in ${resolve(root, foundryRoot)} first.`);
   }
   return contracts.sort((a, b) => {

@@ -32,18 +32,35 @@ function pickFoundryRoot(root: string, report: CapabilityReport): string {
 function contractsFromArtifacts(candidates: string[]): string[] {
   const names = new Set<string>();
   for (const candidate of candidates) {
+    const normalized = candidate.replace(/\\/g, '/');
     const name = basename(candidate, '.json');
     if (
       name &&
+      !/(^|\/)(lib|script|test|interfaces|base)\.sol\//i.test(normalized) &&
+      !/\.(?:s|t)\.sol\//i.test(normalized) &&
       !name.endsWith('.t') &&
       !name.endsWith('.s') &&
       !/^deploy/i.test(name) &&
       !/(?:deploy|verify|test|mock|fixture|helper)$/i.test(name) &&
-      !/^(?:Std|Lib|I[A-Z])/.test(name) &&
+      !/^(?:std|lib|vm|console|safeconsole|byteslib|I[A-Z])/i.test(name) &&
       !/helper/i.test(name)
     ) names.add(name);
   }
   return [...names].sort();
+}
+
+function artifactCandidatesFromRoot(foundryAbs: string): string[] {
+  const outDir = join(foundryAbs, 'out');
+  if (!existsSync(outDir)) return [];
+  const candidates: string[] = [];
+  for (const contractDir of readdirSync(outDir, { withFileTypes: true })) {
+    if (!contractDir.isDirectory() || contractDir.name === 'build-info') continue;
+    const nested = join(outDir, contractDir.name);
+    for (const file of readdirSync(nested, { withFileTypes: true })) {
+      if (file.isFile() && file.name.endsWith('.json')) candidates.push(join(nested, file.name));
+    }
+  }
+  return candidates;
 }
 
 function walkSolFiles(dir: string, depth = 0): string[] {
@@ -76,7 +93,7 @@ function contractsFromSources(foundryAbs: string): string[] {
     }
     for (const match of source.matchAll(/\bcontract\s+([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
       const name = match[1];
-      if (name && /^[A-Z]/.test(name) && !/^deploy/i.test(name) && !/(?:deploy|verify|test|mock|fixture|helper)$/i.test(name) && !/^(?:Std|Lib|I[A-Z])/.test(name)) names.add(name);
+      if (name && /^[A-Z]/.test(name) && !/^deploy/i.test(name) && !/(?:deploy|verify|test|mock|fixture|helper)$/i.test(name) && !/^(?:std|lib|vm|console|safeconsole|byteslib|I[A-Z])/i.test(name)) names.add(name);
     }
   }
   return [...names].sort();
@@ -89,7 +106,10 @@ export function listDetectedContracts(
   const root = resolve(rootInput);
   const report = reportInput ?? detectCapabilities(root);
   const foundryRoot = pickFoundryRoot(root, report);
-  const fromArtifacts = contractsFromArtifacts(report.artifacts.candidates);
+  const fromArtifacts = contractsFromArtifacts([
+    ...report.artifacts.candidates,
+    ...artifactCandidatesFromRoot(resolve(root, foundryRoot)).map((path) => rel(root, path))
+  ]);
   if (fromArtifacts.length > 0) return fromArtifacts;
   return contractsFromSources(resolve(root, foundryRoot));
 }

@@ -139,7 +139,7 @@ async function runScenarioCreate(args: string[], root: string): Promise<void> {
   const foundryRoot = args.includes('--foundry-root')
     ? flag(args, '--foundry-root')
     : config?.foundryRoot ?? detected.toolchain.foundry.configPaths[0]?.split('/').slice(0, -1).join('/') ?? '.';
-  const contracts = listScenarioContracts(root, foundryRoot);
+  const contracts = listScenarioContracts(root, foundryRoot, config?.artifactDir ?? 'out');
   if (!contracts.length) throw new Error('No contract with callable ABI functions was found. Run forge build first.');
 
   let contractName = args.includes('--contract') ? flag(args, '--contract') : '';

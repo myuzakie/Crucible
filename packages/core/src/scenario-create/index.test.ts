@@ -61,13 +61,18 @@ test('refuses to overwrite an existing scenario without explicit permission', ()
 test('prefers application contracts and hides deployment/test/library artifacts', () => {
   const root = artifactRoot();
   try {
-    for (const name of ['DeployYourContract', 'YourContractTest', 'StdAssertions']) {
+    for (const name of ['DeployYourContract', 'YourContractTest', 'StdAssertions', 'stdError', 'CommonBase']) {
       mkdirSync(join(root, 'out', `${name}.sol`), { recursive: true });
       writeFileSync(join(root, 'out', `${name}.sol`, `${name}.json`), JSON.stringify({
         abi: [{ type: 'function', name: 'helper', stateMutability: 'view', inputs: [], outputs: [] }],
         bytecode: { object: '0x6000' }
       }));
     }
+    mkdirSync(join(root, 'out', 'Base.sol'), { recursive: true });
+    writeFileSync(join(root, 'out', 'Base.sol', 'CommonBase.json'), JSON.stringify({
+      abi: [{ type: 'function', name: 'helper', stateMutability: 'view', inputs: [], outputs: [] }],
+      bytecode: { object: '0x6000' }
+    }));
     const contracts = listScenarioContracts(root, '.');
     assert.deepEqual(contracts.map((contract) => contract.name), ['YourContract']);
   } finally {
