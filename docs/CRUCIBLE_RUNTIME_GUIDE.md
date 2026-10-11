@@ -43,6 +43,32 @@ dashboard metrics. Fixture generic untuk debugging tersedia melalui
 
 Viewer fixture tidak memerlukan wallet, RPC, private key, atau provider AI. Diagnosis `Buggy mint` akan mencoba endpoint `/api/diagnose`, lalu menggunakan diagnosis cache jika endpoint tidak tersedia. Itu adalah fallback yang disengaja, bukan bukti live AI.
 
+## Runtime trace untuk developer
+
+Canvas trace menggunakan [React Flow](https://reactflow.dev/) dengan layout
+terkunci. Developer dapat pan, zoom, dan memilih node, tetapi tidak dapat
+mengubah topology execution. Tiga layer memakai data yang sama:
+
+- `Business View`: langkah user seperti Fund Wallet → Purchase → Settlement.
+- `Technical View`: node execution seperti `deploy`, `fund`, dan `purchase`.
+- `Runtime Evidence`: rule dan bukti block, receipt, assurance, atau distance.
+
+Node yang dipilih mengubah inspector di kanan. Jika scenario memiliki optional
+`source` mapping, inspector menampilkan file, symbol, dan line range. Jika tidak
+ada mapping, UI menampilkan `Source mapping unavailable`; Crucible tidak menebak
+source code dengan AI.
+
+Scenario node dapat membawa mapping berikut:
+
+```json
+"source": {
+  "file": "src/hooks/usePurchase.ts",
+  "symbol": "executePurchase",
+  "lineStart": 73,
+  "lineEnd": 91
+}
+```
+
 ## Test yang direkomendasikan
 
 Gate deterministik:

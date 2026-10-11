@@ -87,7 +87,7 @@ export async function runScenario(options: RunScenarioOptions): Promise<RunResul
     const started = Date.now();
     const dependencyFailed = node.after.some((id) => results.find((result) => result.id === id)?.status !== 'passed');
     if (dependencyFailed) {
-      results.push({ id: node.id, status: 'skipped', durationMs: 0 });
+      results.push({ id: node.id, status: 'skipped', durationMs: 0, ...(node.source ? { source: node.source } : {}) });
       continue;
     }
 
@@ -108,7 +108,7 @@ export async function runScenario(options: RunScenarioOptions): Promise<RunResul
         if (!receipt.contractAddress) throw new Error(`Deploy ${node.id} returned no contract address`);
         nodeAddresses[node.id] = receipt.contractAddress;
         nodeArtifacts[node.id] = artifact;
-        results.push({ id: node.id, status: 'passed', durationMs: Date.now() - started, txHash: hash, receipt: receiptSummary(receipt) });
+        results.push({ id: node.id, status: 'passed', durationMs: Date.now() - started, txHash: hash, receipt: receiptSummary(receipt), ...(node.source ? { source: node.source } : {}) });
       } else if (node.type === 'call') {
         const address = nodeAddresses[node.to] ?? (node.to as Address);
         const artifact = nodeArtifacts[node.to];
@@ -126,7 +126,7 @@ export async function runScenario(options: RunScenarioOptions): Promise<RunResul
         if (receipt.status !== 'success') throw new Error(`Call ${node.id} transaction reverted`);
         nodeAddresses[node.id] = address;
         nodeArtifacts[node.id] = artifact;
-        results.push({ id: node.id, status: 'passed', durationMs: Date.now() - started, txHash: hash, receipt: receiptSummary(receipt) });
+        results.push({ id: node.id, status: 'passed', durationMs: Date.now() - started, txHash: hash, receipt: receiptSummary(receipt), ...(node.source ? { source: node.source } : {}) });
       } else {
         const targetId = node.after.at(-1);
         const address = targetId ? nodeAddresses[targetId] : undefined;
@@ -144,10 +144,11 @@ export async function runScenario(options: RunScenarioOptions): Promise<RunResul
             id: node.id,
             status: 'failed',
             durationMs: Date.now() - started,
+            ...(node.source ? { source: node.source } : {}),
             error: { kind: 'assertion', expected, actual: String(actual), message: `Expected ${String(expected)}, got ${String(actual)}` }
           });
         } else {
-          results.push({ id: node.id, status: 'passed', durationMs: Date.now() - started });
+          results.push({ id: node.id, status: 'passed', durationMs: Date.now() - started, ...(node.source ? { source: node.source } : {}) });
         }
       }
     } catch (error) {
@@ -155,6 +156,7 @@ export async function runScenario(options: RunScenarioOptions): Promise<RunResul
         id: node.id,
         status: 'failed',
         durationMs: Date.now() - started,
+        ...(node.source ? { source: node.source } : {}),
         error: { kind: 'rpc', message: error instanceof Error ? error.message : String(error) }
       });
     }
