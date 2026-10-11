@@ -14,6 +14,55 @@ pnpm build
 
 Tidak membutuhkan RPC, wallet, atau secret.
 
+## External repo onboarding (user flow)
+
+Untuk repository Foundry eksternal (target pertama: `monad-developers/scaffold-monad-foundry`):
+
+```bash
+cd /path/to/repo
+pnpm dlx @ohmuzakie/crucible-cli@latest test
+```
+
+- Satu command menjalankan discovery → preflight → build → fresh Anvil → scenario (jika siap).
+- `test` otomatis memakai local mode. `test --local` tetap didukung sebagai alias eksplisit.
+- Jika scenario belum ada, CLI menampilkan `CRUCIBLE NEEDS A BUSINESS SCENARIO` dan menyarankan `pnpm dlx @ohmuzakie/crucible-cli scenario create`.
+- `doctor` dan `init` tetap tersedia untuk diagnosis atau konfigurasi manual, bukan langkah wajib happy path.
+- Wizard memprioritaskan contract aplikasi, melewati deployment script, test, library, dan interface, lalu meminta input ABI scalar sebagai teks/angka/yes-no. JSON hanya untuk advanced flags.
+- `crucible.config.json`, `foundry.toml`, `hardhat.config.*`, `out/`, `artifacts/`, dan `scenarios/` ditemukan otomatis. `--foundry-root`, `--scenario`, dan `--out` tetap tersedia untuk advanced/debug usage.
+- Local test menjalankan `forge build`, spawn Anvil fresh (port ephemeral), eksekusi scenario, lalu menulis `crucible/results/latest.json` tanpa faucet, Monad RPC, atau private key user.
+
+Output default hanya menampilkan hal yang perlu dilakukan developer. Gunakan `--verbose` untuk path dan node detail, atau `--json` untuk automation:
+
+```bash
+pnpm dlx @ohmuzakie/crucible-cli@latest test
+pnpm dlx @ohmuzakie/crucible-cli@latest scenario create
+pnpm dlx @ohmuzakie/crucible-cli@latest test --verbose
+pnpm dlx @ohmuzakie/crucible-cli@latest web
+```
+
+`web` otomatis membaca `crucible/results/latest.json`. Untuk hasil lain gunakan `web --result custom-result.json`.
+
+Acceptance tiga repository publik (developer Crucible only):
+
+```bash
+pnpm test:external --json \
+  --target scaffold-monad-foundry=/path/to/scaffold-monad-foundry \
+  --target scaffold-eth-2=/path/to/scaffold-eth-2 \
+  --target se-2-challenges=/path/to/se-2-challenges
+```
+
+`pnpm test:external` memaketkan CLI dan menjalankan acceptance matrix dari repository Crucible. Command developer ini sengaja berbeda dari flow user `pnpm dlx` dan tidak perlu dijalankan dari repository target.
+
+Status `MISSING_SCENARIO` bukan error toolchain: Crucible sengaja berhenti karena business flow belum diketahui. Buat scenario yang sesuai contract, lalu ulangi command. Status `UNSUPPORTED_TOOLCHAIN`, `MISSING_TOOL`, `MISSING_ARTIFACT`, `BUILD_FAILED`, dan `SCENARIO_FAILED` selalu disertai langkah berikutnya.
+
+```bash
+pnpm crucible validate fixtures/scenarios/mint-nft.json
+pnpm crucible test --local \
+  --scenario examples/monad-erc721-demo/scenarios/mint-nft.json \
+  --foundry-root examples/monad-erc721-demo \
+  --out result.json
+```
+
 ## Demo freeze / final check
 
 Run the deterministic gate before a demo:
@@ -51,7 +100,7 @@ Do not import `.env.example` wholesale into Vercel. The Web viewer does not need
 | Mode | Command / entry | Needs secrets? |
 |---|---|---|
 | `unit` | `pnpm test` | No |
-| `local` | Anvil + `pnpm crucible run … --network local` | Anvil test keys only |
+| `local` | `pnpm crucible test` (or `test --local`) | No user keys |
 | `fixture` | `pnpm --filter @crucible/web dev` | No |
 | `monad-testnet` | `pnpm test:smoke:monad` | Yes (manual/nightly) |
 

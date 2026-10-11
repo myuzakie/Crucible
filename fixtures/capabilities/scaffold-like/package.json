@@ -1,0 +1,7 @@
+{
+  "name": "se-2",
+  "private": true,
+  "packageManager": "yarn@3.2.3",
+  "workspaces": { "packages": ["packages/*"] },
+  "scripts": { "compile": "yarn foundry:compile", "foundry:compile": "yarn workspace @se-2/foundry compile", "chain": "yarn foundry:chain" }
+}

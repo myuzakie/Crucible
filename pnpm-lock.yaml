@@ -210,9 +210,9 @@ importers:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@24.19.1)(esbuild@0.28.2)(tsx@4.23.15)
 
-  examples/monad-erc20-demo: {}
-
   examples/monad-certificate-registry: {}
+
+  examples/monad-erc20-demo: {}
 
   examples/monad-erc721-demo: {}
 
@@ -242,6 +242,10 @@ importers:
 
   packages/cli:
     dependencies:
+      viem:
+        specifier: ^2.57.4
+        version: 2.57.4(typescript@5.9.3)(zod@4.6.5)
+    devDependencies:
       '@crucible/ai':
         specifier: workspace:*
         version: link:../ai
@@ -251,9 +255,9 @@ importers:
       '@crucible/core':
         specifier: workspace:*
         version: link:../core
-      viem:
-        specifier: ^2.57.4
-        version: 2.57.4(typescript@5.9.3)(zod@4.6.5)
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
 
   packages/core:
     dependencies:

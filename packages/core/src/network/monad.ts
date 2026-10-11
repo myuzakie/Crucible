@@ -4,7 +4,8 @@ export const MONAD_TESTNET = {
   chainId: 10143,
   name: 'Monad Testnet',
   rpcUrl: 'https://testnet-rpc.monad.xyz/',
-  explorerUrl: 'https://testnet.monadexplorer.com/'
+  explorerUrl: 'https://testnet.monadexplorer.com/',
+  faucetUrl: 'https://faucet.monad.xyz/'
 } as const;
 
 export function parsePrivateKey(value: string | undefined, name: string): Hex {
