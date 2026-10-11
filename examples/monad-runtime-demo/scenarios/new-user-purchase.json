@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "0.1",
+  "name": "new-user-purchase",
+  "network": "local",
+  "metadata": { "businessFlow": "New User Purchase", "label": "Fund a new account and purchase" },
+  "actors": { "deployer": "env:DEPLOYER_PRIVATE_KEY", "alice": "env:ALICE_PRIVATE_KEY" },
+  "nodes": [
+    { "id": "deploy", "type": "deploy", "contract": "RuntimeDemoVulnerable", "args": [], "after": [] },
+    { "id": "fund", "type": "call", "from": "deployer", "to": "deploy", "fn": "fund", "args": ["alice", "100"], "after": ["deploy"] },
+    { "id": "purchase", "type": "call", "from": "alice", "to": "deploy", "fn": "purchase", "args": ["40"], "after": ["fund"] },
+    { "id": "purchase-count", "type": "assert", "check": { "fn": "purchases", "args": [], "eq": "1" }, "after": ["purchase"] }
+  ]
+}

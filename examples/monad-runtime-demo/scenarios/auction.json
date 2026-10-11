@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "0.1",
+  "name": "auction",
+  "network": "local",
+  "metadata": { "businessFlow": "Auction", "label": "Place an ordered bid" },
+  "actors": { "deployer": "env:DEPLOYER_PRIVATE_KEY", "alice": "env:ALICE_PRIVATE_KEY" },
+  "nodes": [
+    { "id": "deploy", "type": "deploy", "contract": "RuntimeDemoVulnerable", "args": [], "after": [] },
+    { "id": "bid", "type": "call", "from": "alice", "to": "deploy", "fn": "placeBid", "args": ["10"], "after": ["deploy"] },
+    { "id": "highest-bid", "type": "assert", "check": { "fn": "highestBid", "args": [], "eq": "10" }, "after": ["bid"] }
+  ]
+}

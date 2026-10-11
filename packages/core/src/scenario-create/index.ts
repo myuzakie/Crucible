@@ -6,6 +6,7 @@ import type { Abi } from 'viem';
 import { detectCapabilities } from '../capabilities/index.js';
 import { parseFoundryArtifact } from '../adapters/foundry/index.js';
 import { ScenarioSchema, type Scenario } from '../schema/index.js';
+import type { SourceLocation } from '../schema/index.js';
 
 type AbiEntry = {
   type?: string;
@@ -80,6 +81,29 @@ export type ScenarioCreateResult = {
   path: string;
   contract: ScenarioContract;
 };
+
+export type CompileJourneyOptions = Omit<CreateScenarioOptions, 'root' | 'foundryRoot' | 'artifactDir'> & {
+  root: string;
+  foundryRoot: string;
+  artifactDir?: string;
+  source?: SourceLocation;
+  actors?: Record<string, string>;
+};
+
+/** Compile a manually described product journey into the same validated scenario used by the CLI wizard. */
+export function compileJourney(options: CompileJourneyOptions): ScenarioCreateResult {
+  const result = createScenarioDraft(options);
+  const scenario = ScenarioSchema.parse({
+    ...result.scenario,
+    actors: options.actors ?? { deployer: 'fixture:deployer', alice: 'fixture:alice' },
+    metadata: {
+      ...result.scenario.metadata,
+      businessFlow: result.scenario.metadata?.businessFlow ?? `${options.contract} journey`
+    },
+    nodes: result.scenario.nodes.map((node) => options.source ? { ...node, source: options.source } : node)
+  });
+  return { ...result, scenario };
+}
 
 function normalizeEntries(entries: Array<{ name?: string; type?: string }> | undefined) {
   return (entries ?? []).map((entry, index) => ({

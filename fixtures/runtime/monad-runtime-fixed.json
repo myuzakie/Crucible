@@ -1,0 +1,46 @@
+{
+  "profile": "monad-core",
+  "suiteVersion": "1.0.0",
+  "findings": [
+    {
+      "findingId": "MND-TIME-001:fixed-runtime-demo:auction",
+      "ruleId": "MND-TIME-001",
+      "journeyId": "fixed-runtime-demo",
+      "nodeId": "auction",
+      "status": "passed",
+      "summary": "Timestamp progression was not assumed between adjacent blocks.",
+      "expected": "current timestamp is greater than the previous timestamp",
+      "observed": { "previousBlock": 501, "previousTimestamp": 1000, "currentBlock": 502, "currentTimestamp": 1001 },
+      "evidence": [
+        { "type": "block", "source": "fixture", "observed": { "number": 501, "timestamp": 1000 }, "blockNumber": 501, "blockTimestamp": 1000 },
+        { "type": "block", "source": "fixture", "observed": { "number": 502, "timestamp": 1001 }, "blockNumber": 502, "blockTimestamp": 1001 }
+      ]
+    },
+    {
+      "findingId": "MND-FINALITY-001:fixed-runtime-demo:settlement",
+      "ruleId": "MND-FINALITY-001",
+      "journeyId": "fixed-runtime-demo",
+      "nodeId": "settlement",
+      "status": "passed",
+      "summary": "The irreversible action waited for the required assurance level.",
+      "expected": "finalized",
+      "observed": "finalized",
+      "evidence": [
+        { "type": "assurance", "source": "fixture", "observed": "finalized", "expected": "finalized", "assuranceLevel": "finalized" }
+      ]
+    },
+    {
+      "findingId": "MND-FUND-001:fixed-runtime-demo:purchase",
+      "ruleId": "MND-FUND-001",
+      "journeyId": "fixed-runtime-demo",
+      "nodeId": "purchase",
+      "status": "passed",
+      "summary": "The funded-account action respected the safe block distance.",
+      "expected": { "requiredSafeDistance": 3, "firstAttempt": "passed after the safe distance" },
+      "observed": { "firstDistance": 3, "firstAttempt": "passed" },
+      "evidence": [
+        { "type": "blockDistance", "source": "fixture", "observed": 3, "expected": 3, "blockNumber": 12054, "metadata": { "fundingBlock": 12051, "attemptBlock": 12054, "requiredSafeDistance": 3, "firstAttempt": "passed" } }
+      ]
+    }
+  ]
+}

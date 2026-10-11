@@ -16,7 +16,8 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "viem": "^2.57.4"
+    "viem": "^2.57.4",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@crucible/ai": "workspace:*",

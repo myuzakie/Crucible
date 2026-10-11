@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "0.1",
+  "name": "settlement",
+  "network": "local",
+  "metadata": { "businessFlow": "Settlement", "label": "Release a settled product" },
+  "actors": { "deployer": "env:DEPLOYER_PRIVATE_KEY" },
+  "nodes": [
+    { "id": "deploy", "type": "deploy", "contract": "RuntimeDemoVulnerable", "args": [], "after": [] },
+    { "id": "release-product", "type": "call", "from": "deployer", "to": "deploy", "fn": "releaseProduct", "args": [], "after": ["deploy"] },
+    { "id": "settled", "type": "assert", "check": { "fn": "settled", "args": [], "eq": true }, "after": ["release-product"] }
+  ]
+}

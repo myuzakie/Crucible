@@ -1,6 +1,22 @@
 export const CORE_VERSION = '0.1.0';
 
 export * from './schema/index.js';
+export {
+  RuntimeRuleIdSchema,
+  RuntimeRuleSchema,
+  RuntimeEvidenceSchema,
+  RuntimeFindingSchema,
+  VerificationProfileSchema,
+  RuntimeVerificationSchema,
+  RuntimeReplaySummarySchema,
+  MONAD_CORE_RULE_IDS,
+  VERIFICATION_PROFILES,
+  isRuntimePassportEligible
+} from './runtime/index.js';
+export * from './runtime/rules.js';
+export * from './runtime/replay.js';
+export * from './runtime/execution.js';
+export * from './runtime/envio.js';
 export * from './network/monad.js';
 export * from './network/testnet.js';
 export * from './runner/index.js';
@@ -21,3 +37,4 @@ export * from './templates/index.js';
 export * from './tooling.js';
 export * from './onboarding/index.js';
 export * from './scenario-create/index.js';
+export * from './project/index.js';

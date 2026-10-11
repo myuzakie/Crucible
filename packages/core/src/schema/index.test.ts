@@ -32,6 +32,21 @@ test('accepts a valid scenario', () => {
   assert.equal(result.success, true);
 });
 
+test('preserves optional source mapping for runtime trace inspection', () => {
+  const scenario = ScenarioSchema.parse({
+    ...validScenario,
+    nodes: [{ ...validScenario.nodes[0], source: { file: 'src/purchase.ts', symbol: 'executePurchase', lineStart: 73, lineEnd: 91 } }]
+  });
+  assert.deepEqual(scenario.nodes[0]?.source, { file: 'src/purchase.ts', symbol: 'executePurchase', lineStart: 73, lineEnd: 91 });
+
+  const result = RunResultSchema.parse({
+    runId: 'run-source', scenario: 'token-happy-path', status: 'passed', score: 100,
+    network: { name: 'local', chainId: 31337 }, startedAt: '2026-10-11T00:00:00.000Z', finishedAt: '2026-10-11T00:00:01.000Z',
+    nodes: [{ id: 'deploy', status: 'passed', durationMs: 10, source: scenario.nodes[0]?.source }], summary: { passed: 1, failed: 0, skipped: 0 }
+  });
+  assert.equal(result.nodes[0]?.source?.file, 'src/purchase.ts');
+});
+
 test('rejects duplicate and unknown node dependencies', () => {
   const result = ScenarioSchema.safeParse({
     ...validScenario,

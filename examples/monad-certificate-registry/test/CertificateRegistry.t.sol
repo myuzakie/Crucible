@@ -34,4 +34,12 @@ contract CertificateRegistryTest {
         );
         require(!ok, "empty hash accepted");
     }
+
+    function testRegisterPassportStoresSuiteVersion() public {
+        bytes32 passportHash = keccak256("passport");
+        registry.registerPassport(passportHash, "https://crucible.example/passport", "1.0.0");
+        CertificateRegistry.Record memory record = registry.get(passportHash);
+        require(keccak256(bytes(record.suiteVersion)) == keccak256(bytes("1.0.0")), "suite version");
+        require(record.exists, "passport exists");
+    }
 }

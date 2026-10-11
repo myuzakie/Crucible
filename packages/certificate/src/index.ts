@@ -14,6 +14,8 @@ import { RunResultSchema, ScenarioSchema, type RunResult, type Scenario } from '
 import { z } from 'zod';
 
 export * from './registry.js';
+export * from './passport.js';
+export * from './trust.js';
 
 export const CertificateReportSchema = z.object({
   schemaVersion: z.string().default('0.1'),
