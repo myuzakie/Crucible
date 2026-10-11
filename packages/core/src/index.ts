@@ -2,6 +2,7 @@ export const CORE_VERSION = '0.1.0';
 
 export * from './schema/index.js';
 export * from './runtime/index.js';
+export * from './runtime/rules.js';
 export * from './network/monad.js';
 export * from './network/testnet.js';
 export * from './runner/index.js';
