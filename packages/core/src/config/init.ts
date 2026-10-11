@@ -32,10 +32,35 @@ function pickFoundryRoot(root: string, report: CapabilityReport): string {
 function contractsFromArtifacts(candidates: string[]): string[] {
   const names = new Set<string>();
   for (const candidate of candidates) {
+    const normalized = candidate.replace(/\\/g, '/');
     const name = basename(candidate, '.json');
-    if (name && !name.endsWith('.t') && !name.endsWith('.s')) names.add(name);
+    if (
+      name &&
+      !/(^|\/)(lib|script|test|interfaces|base)\.sol\//i.test(normalized) &&
+      !/\.(?:s|t)\.sol\//i.test(normalized) &&
+      !name.endsWith('.t') &&
+      !name.endsWith('.s') &&
+      !/^deploy/i.test(name) &&
+      !/(?:deploy|verify|test|mock|fixture|helper)$/i.test(name) &&
+      !/^(?:std|lib|vm|console|safeconsole|byteslib|I[A-Z])/i.test(name) &&
+      !/helper/i.test(name)
+    ) names.add(name);
   }
   return [...names].sort();
+}
+
+function artifactCandidatesFromRoot(foundryAbs: string): string[] {
+  const outDir = join(foundryAbs, 'out');
+  if (!existsSync(outDir)) return [];
+  const candidates: string[] = [];
+  for (const contractDir of readdirSync(outDir, { withFileTypes: true })) {
+    if (!contractDir.isDirectory() || contractDir.name === 'build-info') continue;
+    const nested = join(outDir, contractDir.name);
+    for (const file of readdirSync(nested, { withFileTypes: true })) {
+      if (file.isFile() && file.name.endsWith('.json')) candidates.push(join(nested, file.name));
+    }
+  }
+  return candidates;
 }
 
 function walkSolFiles(dir: string, depth = 0): string[] {
@@ -68,14 +93,23 @@ function contractsFromSources(foundryAbs: string): string[] {
     }
     for (const match of source.matchAll(/\bcontract\s+([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
       const name = match[1];
-      if (name) names.add(name);
+      if (name && /^[A-Z]/.test(name) && !/^deploy/i.test(name) && !/(?:deploy|verify|test|mock|fixture|helper)$/i.test(name) && !/^(?:std|lib|vm|console|safeconsole|byteslib|I[A-Z])/i.test(name)) names.add(name);
     }
   }
   return [...names].sort();
 }
 
-function listDetectedContracts(root: string, report: CapabilityReport, foundryRoot: string): string[] {
-  const fromArtifacts = contractsFromArtifacts(report.artifacts.candidates);
+export function listDetectedContracts(
+  rootInput = process.cwd(),
+  reportInput?: CapabilityReport
+): string[] {
+  const root = resolve(rootInput);
+  const report = reportInput ?? detectCapabilities(root);
+  const foundryRoot = pickFoundryRoot(root, report);
+  const fromArtifacts = contractsFromArtifacts([
+    ...report.artifacts.candidates,
+    ...artifactCandidatesFromRoot(resolve(root, foundryRoot)).map((path) => rel(root, path))
+  ]);
   if (fromArtifacts.length > 0) return fromArtifacts;
   return contractsFromSources(resolve(root, foundryRoot));
 }
@@ -91,7 +125,7 @@ export function initCrucible(rootInput = process.cwd()): InitResult {
 
   const report = detectCapabilities(root);
   const foundryRoot = pickFoundryRoot(root, report);
-  const detectedContracts = listDetectedContracts(root, report, foundryRoot);
+  const detectedContracts = listDetectedContracts(root, report);
   const existingScenario = report.scenarios.candidates[0];
   const configAbs = join(root, 'crucible.config.json');
 
@@ -140,10 +174,10 @@ export function initCrucible(rootInput = process.cwd()): InitResult {
       : [
           'MISSING_SCENARIO: no Crucible scenario JSON was found.',
           contractSummary,
-          'Add scenarios/<name>.json that deploys a real contract from this repo with business assertions you choose.',
-          'Do not invent mint/balanceOf/ownerOf unless those functions exist on the chosen contract.',
-          'Optional template: fixtures/scenarios/mint-nft.json (only if your contract matches mint/ownerOf).',
-          'Re-run crucible init after adding a scenario, then crucible test.'
+          'Run pnpm dlx @ohmuzakie/crucible-cli scenario create to create a business scenario from the contract ABI.',
+          'The wizard asks human-friendly questions and will not invent deploy/call/assert steps.',
+          'Optional template: fixtures/scenarios/mint-nft.json (only when the contract actually matches mint/ownerOf).',
+          'Then run pnpm dlx @ohmuzakie/crucible-cli test.'
         ];
 
   return { root, status, created, skipped, config, detectedContracts, nextSteps };

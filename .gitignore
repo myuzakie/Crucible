@@ -7,6 +7,7 @@ coverage/
 *.log
 *.pem
 result.json
+**/crucible/results/
 certificate.json
 CRUCIBLE_context_project/
 !CRUCIBLE_context_project.zip
@@ -16,4 +17,3 @@ out/
 cache/
 broadcast/
 .DS_Store
-
