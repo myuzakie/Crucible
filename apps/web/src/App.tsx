@@ -216,6 +216,12 @@ export function App() {
               <div className="replay-proof-grid"><div><span>Before</span><strong>{result.verifiedReplay.beforeRunId}</strong></div><div><span>After</span><strong>{result.verifiedReplay.afterRunId}</strong></div><div><span>Recovered</span><strong>{result.verifiedReplay.diffSummary.recoveredJourneys.length} journeys</strong></div><div><span>Status</span><strong className="status-text passed">Runtime Verified</strong></div></div>
             </section>
           ) : null}
+          {result.runtimeVerification?.profile === 'monad-core' && result.runtimeVerification.findings.length > 0 && result.runtimeVerification.findings.every((finding) => finding.status === 'passed') ? (
+            <section className="passport-card panel" aria-label="Runtime Passport eligibility">
+              <div><p className="eyebrow">CRUCIBLE RUNTIME PASSPORT</p><h2>Version-bound proof eligible</h2><p>This exact application version passed the Monad Runtime Verification Suite.</p></div>
+              <div className="passport-meta"><span>Profile <strong>{result.runtimeVerification.profile}</strong></span><span>Suite <strong>{result.runtimeVerification.suiteVersion}</strong></span><span>Attestation <strong>Ready to publish</strong></span></div>
+            </section>
+          ) : null}
           <section className="content-grid">
             <div className="panel flow-panel">
               <div className="panel-heading">

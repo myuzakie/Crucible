@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 
-import { CertificateRegistryAbi, createCertificate, verifyCertificate } from '@crucible/certificate';
+import { CertificateRegistryAbi, createCertificate, verifyCertificate, verifyRuntimePassport } from '@crucible/certificate';
 import { DiagnosisSchema } from '@crucible/ai';
 import {
   AdapterError,
@@ -57,7 +57,8 @@ const USAGE_LINES = [
   '  crucible run <scenario.json> --network local [--foundry-root path] [--rpc url] [--out result.json]',
   '  crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
   '  crucible verify <certificate.json>',
-  '  crucible publish <certificate.json> --rpc url --registry 0x… [--key-env ENV] [--uri url] [--out certificate.json]'
+  '  crucible publish <certificate.json> --rpc url --registry 0x… [--key-env ENV] [--uri url] [--out certificate.json]',
+  '  crucible publish-passport <passport.json> --rpc url --registry 0x… [--key-env ENV] [--uri url] [--out passport.json]'
 ];
 
 function usage(): never {
@@ -412,6 +413,47 @@ try {
     const outputPath = flag(args, '--out', certificatePath);
     await writeFile(resolve(outputPath), `${JSON.stringify(published, null, 2)}\n`);
     console.log(`PUBLISHED: ${report.contentHash} — ${transactionHash}`);
+    process.exit(0);
+  }
+
+  if (command === 'publish-passport') {
+    const passportPath = rest[0] ?? usage();
+    const args = rest.slice(1);
+    const passport = verifyRuntimePassport(await loadJson(passportPath));
+    const rpcUrl = flag(args, '--rpc', process.env.LOCAL_RPC_URL ?? 'http://127.0.0.1:8545');
+    const registry = flag(args, '--registry');
+    if (!/^0x[a-fA-F0-9]{40}$/.test(registry)) throw new Error('Invalid --registry address.');
+    const keyEnv = flag(args, '--key-env', 'DEPLOYER_PRIVATE_KEY');
+    const account = privateKeyToAccount(parsePrivateKey(process.env[keyEnv], keyEnv));
+    const publicClient = createPublicClient({ transport: http(rpcUrl) });
+    const walletClient = createWalletClient({ account, transport: http(rpcUrl) });
+    const chainId = await publicClient.getChainId();
+    const expectedChainId = Number(flag(args, '--chain-id', String(chainId)));
+    if (chainId !== expectedChainId) throw new Error(`RPC chain ID ${chainId} does not match expected ${expectedChainId}.`);
+    const uri = flag(args, '--uri', `crucible://passport/${passport.passportId}`);
+    const transactionHash = await walletClient.writeContract({
+      chain: null,
+      address: registry as `0x${string}`,
+      abi: CertificateRegistryAbi,
+      functionName: 'registerPassport',
+      args: [`0x${passport.passportHash}` as `0x${string}`, uri, passport.suiteVersion]
+    });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: transactionHash });
+    if (receipt.status !== 'success') throw new Error('Runtime Passport registry transaction failed.');
+    const explorerBase = process.env.MONAD_EXPLORER_URL;
+    const published = {
+      ...passport,
+      onChain: {
+        chainId,
+        registryAddress: registry,
+        transactionHash,
+        suiteVersion: passport.suiteVersion,
+        ...(explorerBase ? { explorerUrl: `${explorerBase.replace(/\/$/, '')}/tx/${transactionHash}` } : {})
+      }
+    };
+    const outputPath = flag(args, '--out', passportPath);
+    await writeFile(resolve(outputPath), `${JSON.stringify(published, null, 2)}\n`);
+    console.log(`PASSPORT ATTESTED: ${passport.passportHash} — ${transactionHash}`);
     process.exit(0);
   }
 

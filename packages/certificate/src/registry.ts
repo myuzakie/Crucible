@@ -13,6 +13,17 @@ export const CertificateRegistryAbi = [
   },
   {
     type: 'function',
+    name: 'registerPassport',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'passportHash', type: 'bytes32' },
+      { name: 'uri', type: 'string' },
+      { name: 'suiteVersion', type: 'string' }
+    ],
+    outputs: []
+  },
+  {
+    type: 'function',
     name: 'get',
     stateMutability: 'view',
     inputs: [{ name: 'contentHash', type: 'bytes32' }],
@@ -23,6 +34,7 @@ export const CertificateRegistryAbi = [
         { name: 'issuer', type: 'address' },
         { name: 'timestamp', type: 'uint64' },
         { name: 'uri', type: 'string' },
+        { name: 'suiteVersion', type: 'string' },
         { name: 'exists', type: 'bool' }
       ]
     }]
@@ -34,4 +46,8 @@ export type OnChainCertificate = {
   registryAddress: `0x${string}`;
   transactionHash: `0x${string}`;
   explorerUrl?: string;
+};
+
+export type OnChainPassportAttestation = OnChainCertificate & {
+  suiteVersion: string;
 };
