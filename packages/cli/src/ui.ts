@@ -54,8 +54,12 @@ const MENU = [
   { label: 'Exit', args: [] }
 ];
 
-function renderMenu(version: string, selected: number): void {
-  clearScreen();
+type MenuFrame = {
+  lines: string[];
+  menuStart: number;
+};
+
+function menuFrame(version: string, selected: number): MenuFrame {
   const logo = logoLines();
   const width = process.stdout.columns ?? 100;
   const leftWidth = Math.max(...logo.map((line) => line.length), 0);
@@ -80,16 +84,31 @@ function renderMenu(version: string, selected: number): void {
   ];
 
   if (width < 90) {
-    process.stdout.write(`${logo.join('\n')}\n`);
-    console.log('');
-    right.forEach((line) => console.log(`  ${line}`));
-    return;
+    const lines = [...logo, '', ...right.map((line) => `  ${line}`)];
+    return { lines, menuStart: logo.length + 1 + 8 };
   }
 
+  const lines: string[] = [];
   for (let index = 0; index < Math.max(logo.length, right.length); index += 1) {
     const left = logo[index] ?? '';
     const rightLine = right[index] ?? '';
-    console.log(`${left.padEnd(leftWidth)}${gap}${rightLine}`);
+    lines.push(`${left.padEnd(leftWidth)}${gap}${rightLine}`);
+  }
+  return { lines, menuStart: 8 };
+}
+
+function renderMenu(version: string, selected: number): MenuFrame {
+  const frame = menuFrame(version, selected);
+  clearScreen();
+  process.stdout.write(`${frame.lines.join('\n')}\n`);
+  return frame;
+}
+
+function updateSelection(version: string, previous: number, selected: number): void {
+  const frame = menuFrame(version, selected);
+  const changed = previous === selected ? [selected] : [previous, selected];
+  for (const index of changed) {
+    process.stdout.write(`\u001b[H\u001b[${frame.menuStart + index}B\u001b[2K\r${frame.lines[frame.menuStart + index]}`);
   }
 }
 
@@ -98,6 +117,29 @@ function runExistingCommand(args: string[]): Promise<number> {
     const child = spawn(process.execPath, [...process.execArgv, process.argv[1], ...args], { stdio: 'inherit' });
     child.once('exit', (code, signal) => resolve(signal ? 1 : code ?? 1));
     child.once('error', () => resolve(1));
+  });
+}
+
+async function waitForReturn(cleanup: () => void): Promise<void> {
+  process.stdout.write('\nPress Enter to return to home.');
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  await new Promise<void>((resolve) => {
+    const onKeypress = (_input: string, key: Key) => {
+      if (key.ctrl && key.name === 'c') {
+        process.stdin.removeListener('keypress', onKeypress);
+        cleanup();
+        process.exit(0);
+      }
+      if (key.name === 'return') {
+        process.stdin.removeListener('keypress', onKeypress);
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+        process.stdout.write('\n');
+        resolve();
+      }
+    };
+    process.stdin.on('keypress', onKeypress);
   });
 }
 
@@ -144,6 +186,7 @@ export async function runInteractiveHome(version: string): Promise<void> {
       cleanup();
       process.exit(0);
     }
+    const previous = selected;
     if (key.name === 'up') selected = (selected + MENU.length - 1) % MENU.length;
     else if (key.name === 'down') selected = (selected + 1) % MENU.length;
     else if (key.name === 'escape') selected = 0;
@@ -155,14 +198,19 @@ export async function runInteractiveHome(version: string): Promise<void> {
       }
       process.stdin.setRawMode(false);
       process.stdin.pause();
+      process.stdin.removeListener('keypress', onKeypress);
       leaveSurface();
       await runExistingCommand(item.args);
       if (!active) return;
+      await waitForReturn(cleanup);
+      if (!active) return;
       enterSurface();
+      process.stdin.on('keypress', onKeypress);
       process.stdin.setRawMode(true);
       process.stdin.resume();
+      renderMenu(version, selected);
     }
-    renderMenu(version, selected);
+    if (active && previous !== selected) updateSelection(version, previous, selected);
   };
   process.once('SIGINT', onSigint);
   process.stdin.on('keypress', onKeypress);
