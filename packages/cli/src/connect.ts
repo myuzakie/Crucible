@@ -1,25 +1,31 @@
 import { createServer, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { resolve, join } from 'node:path';
+import { lstat, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { resolve, join, relative, sep } from 'node:path';
+import { z } from 'zod';
 
 import { DiagnosisSchema, createOpenAICompatibleClient, diagnoseWithModel } from '@crucible/ai';
 import { remediateRuntimeFinding } from '@crucible/ai';
-import { ScenarioSchema, compileJourney, createVerifiedReplay, inspectProject, runLocalTest, withExecutionVerification, type ProjectSnapshot } from '@crucible/core';
+import { RunResultSchema, RuntimeFindingSchema, ScenarioSchema, compileJourney, createVerifiedReplay, inspectProject, runLocalTest, withExecutionVerification, type ProjectSnapshot } from '@crucible/core';
 import { CertificateRegistryAbi, attachPassportAttestation, createRuntimePassport, verifyRuntimePassport, type RuntimePassport } from '@crucible/certificate';
 import { runMonadTestnetTest } from './testnet.js';
 import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
-export type RunnerOptions = { root: string; name?: string; host?: string; port?: number };
+export type RunnerOptions = { root: string; name?: string; host?: string; port?: number; allowedOrigins?: string[] };
 export type RunnerHandle = { server: Server; url: string; snapshot: ProjectSnapshot; close: () => Promise<void> };
 
-function json(response: import('node:http').ServerResponse, status: number, body: unknown) {
-  response.writeHead(status, {
+const localOrigins = ['http://127.0.0.1:5173', 'http://localhost:5173'];
+
+function json(response: import('node:http').ServerResponse, status: number, body: unknown, origin?: string) {
+  const headers: Record<string, string> = {
     'content-type': 'application/json; charset=utf-8',
-    'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET, POST, OPTIONS',
     'access-control-allow-headers': 'content-type'
+  };
+  if (origin) headers['access-control-allow-origin'] = origin;
+  response.writeHead(status, {
+    ...headers
   });
   response.end(JSON.stringify(body));
 }
@@ -33,9 +39,11 @@ async function body(request: import('node:http').IncomingMessage): Promise<unkno
   return raw ? JSON.parse(raw) as unknown : {};
 }
 
-function foundryOptions(root: string, snapshot: ProjectSnapshot) {
+async function foundryOptions(root: string, snapshot: ProjectSnapshot) {
   const foundryRoot = snapshot.detection.toolchain.foundry.configPaths[0]?.split('/').slice(0, -1).join('/') || '.';
-  return { foundryRoot: resolve(root, foundryRoot), artifactDir: 'out' };
+  const resolvedFoundryRoot = resolve(root, foundryRoot);
+  await assertSafeRepositoryPath(root, resolvedFoundryRoot, 'Foundry root');
+  return { foundryRoot: resolvedFoundryRoot, artifactDir: 'out' };
 }
 
 function hash(value: unknown): string {
@@ -44,14 +52,55 @@ function hash(value: unknown): string {
 
 function statePath(root: string): string { return join(root, 'crucible', 'results', 'm21d-state.json'); }
 
+function isWithin(root: string, candidate: string): boolean {
+  const path = relative(root, candidate);
+  return path === '' || (!path.startsWith(`..${sep}`) && path !== '..' && !path.split(sep).includes('..'));
+}
+
+async function assertSafeRepositoryPath(root: string, candidate: string, label: string): Promise<void> {
+  const resolvedRoot = await realpath(root);
+  const resolvedCandidate = await realpath(candidate);
+  if (!isWithin(resolvedRoot, resolvedCandidate)) throw new Error(`${label} must stay inside the connected repository root.`);
+}
+
+async function assertSafeStateDirectory(root: string): Promise<void> {
+  const crucible = join(root, 'crucible');
+  const results = join(crucible, 'results');
+  for (const path of [crucible, results]) {
+    try {
+      if ((await lstat(path)).isSymbolicLink()) throw new Error('State directory symlinks are not allowed.');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+}
+
 async function readState(root: string): Promise<Record<string, unknown>> {
   try { return JSON.parse(await readFile(statePath(root), 'utf8')) as Record<string, unknown>; } catch { return {}; }
 }
 
 async function writeState(root: string, value: Record<string, unknown>): Promise<void> {
+  await assertSafeStateDirectory(root);
   await mkdir(join(root, 'crucible', 'results'), { recursive: true });
   await writeFile(statePath(root), `${JSON.stringify(value, null, 2)}\n`);
 }
+
+const CompileJourneyRequestSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  contract: z.string().min(1).max(200),
+  call: z.string().min(1).max(200),
+  assertion: z.string().min(1).max(200),
+  constructorArgs: z.array(z.unknown()).max(100).optional(),
+  callArgs: z.array(z.unknown()).max(100).optional(),
+  assertionArgs: z.array(z.unknown()).max(100).optional(),
+  expected: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  source: z.object({ file: z.string().min(1).max(1000) }).strict().optional()
+}).strict();
+
+const RunRequestSchema = z.object({ scenario: ScenarioSchema, mode: z.enum(['local', 'testnet']).optional(), confirmed: z.boolean().optional() }).strict();
+const PassportRequestSchema = z.object({ beforeRun: RunResultSchema, afterRun: RunResultSchema, scenario: ScenarioSchema, commit: z.string().max(200).optional(), runtimeVersion: z.string().max(200).optional(), issuer: z.string().max(200).optional() }).strict();
+const PublishRequestSchema = z.object({ passport: z.unknown(), registry: z.string(), keyEnv: z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/).optional(), rpc: z.string().url().optional(), uri: z.string().max(1000).optional() }).strict();
+const RemediateRequestSchema = z.object({ finding: RuntimeFindingSchema, scenario: ScenarioSchema }).strict();
 
 function fallbackDiagnosis(result: import('@crucible/core').RunResult) {
   const failed = result.nodes.find((node) => node.status === 'failed') ?? result.nodes[0];
@@ -70,23 +119,28 @@ function fallbackDiagnosis(result: import('@crucible/core').RunResult) {
 export async function startLocalRunner(options: RunnerOptions): Promise<RunnerHandle> {
   const host = options.host ?? '127.0.0.1';
   const root = resolve(options.root);
+  await assertSafeRepositoryPath(root, root, 'Repository root');
   const snapshot = inspectProject(root, options.name);
+  const configuredOrigins = options.allowedOrigins ?? (process.env.CRUCIBLE_ALLOWED_ORIGINS ? process.env.CRUCIBLE_ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean) : localOrigins);
+  const allowedOrigins = new Set(configuredOrigins);
   let persisted = await readState(root);
   const server = createServer(async (request, response) => {
-    if (request.method === 'OPTIONS') return json(response, 204, {});
+    const origin = request.headers.origin;
+    if (origin && !allowedOrigins.has(origin)) return json(response, 403, { error: 'Origin is not allowed.' });
+    if (request.method === 'OPTIONS') return json(response, 204, {}, origin);
     const path = new URL(request.url ?? '/', `http://${host}`).pathname;
-    if (path === '/health') return json(response, 200, { ok: true, service: 'crucible-local-runner', version: '0.1.0' });
+    if (path === '/health') return json(response, 200, { ok: true, service: 'crucible-local-runner', version: '0.1.0' }, origin);
     try {
-      if (request.method === 'GET' && path === '/project') return json(response, 200, snapshot);
-      if (request.method === 'GET' && path === '/contracts') return json(response, 200, { project: snapshot.project, contracts: snapshot.contracts });
-      if (request.method === 'GET' && path === '/state') return json(response, 200, persisted);
-      if (request.method !== 'POST') return json(response, 405, { error: 'Use GET for inspection or POST for compile/run.' });
+      if (request.method === 'GET' && path === '/project') return json(response, 200, snapshot, origin);
+      if (request.method === 'GET' && path === '/contracts') return json(response, 200, { project: snapshot.project, contracts: snapshot.contracts }, origin);
+      if (request.method === 'GET' && path === '/state') return json(response, 200, persisted, origin);
+      if (request.method !== 'POST') return json(response, 405, { error: 'Use GET for inspection or POST for compile/run.' }, origin);
       const input = await body(request);
       if (path === '/journeys/compile') {
-        const value = input as Record<string, unknown>;
+        const value = CompileJourneyRequestSchema.parse(input);
         const compiled = compileJourney({
           root,
-          ...foundryOptions(root, snapshot),
+          ...(await foundryOptions(root, snapshot)),
           name: String(value.name ?? 'manual-journey'),
           contract: String(value.contract ?? ''),
           call: String(value.call ?? ''),
@@ -95,28 +149,28 @@ export async function startLocalRunner(options: RunnerOptions): Promise<RunnerHa
           callArgs: Array.isArray(value.callArgs) ? value.callArgs : [],
           assertionArgs: Array.isArray(value.assertionArgs) ? value.assertionArgs : [],
           expected: typeof value.expected === 'string' || typeof value.expected === 'number' || typeof value.expected === 'boolean' ? value.expected : undefined,
-          source: value.source && typeof value.source === 'object' ? value.source as never : undefined
+          source: value.source
         });
-        return json(response, 200, { scenario: compiled.scenario, contract: compiled.contract });
+        return json(response, 200, { scenario: compiled.scenario, contract: compiled.contract }, origin);
       }
       if (path === '/runs') {
-        const value = input as Record<string, unknown>;
-        const scenario = ScenarioSchema.parse(value.scenario);
+        const value = RunRequestSchema.parse(input);
+        const scenario = value.scenario;
         const mode = value.mode === 'testnet' ? 'testnet' : 'local';
         if (mode === 'testnet') {
           const confirmed = value.confirmed === true;
-          const testnet = await runMonadTestnetTest({ scenario, ...foundryOptions(root, snapshot), confirmed, dryRun: !confirmed });
-          return json(response, testnet.runResult ? 200 : 409, { mode, ...testnet, ...(testnet.runResult ? { result: withExecutionVerification(testnet.runResult) } : {}) });
+          const testnet = await runMonadTestnetTest({ scenario, ...(await foundryOptions(root, snapshot)), confirmed, dryRun: !confirmed });
+          return json(response, testnet.runResult ? 200 : 409, { mode, ...testnet, ...(testnet.runResult ? { result: withExecutionVerification(testnet.runResult) } : {}) }, origin);
         }
-        const result = withExecutionVerification(await runLocalTest({ scenario, ...foundryOptions(root, snapshot) }));
+        const result = withExecutionVerification(await runLocalTest({ scenario, ...(await foundryOptions(root, snapshot)) }));
         persisted = { ...persisted, scenario, ...(result.status === 'failed' && !persisted.beforeRun ? { beforeRun: result } : {}), ...(result.status === 'passed' ? { afterRun: result } : {}), updatedAt: new Date().toISOString() };
         await writeState(root, persisted);
-        return json(response, 200, { mode, result });
+        return json(response, 200, { mode, result }, origin);
       }
       if (path === '/passport') {
-        const value = input as Record<string, unknown>;
-        const beforeRun = value.beforeRun as import('@crucible/core').RunResult;
-        const afterRun = value.afterRun as import('@crucible/core').RunResult;
+        const value = PassportRequestSchema.parse(input);
+        const beforeRun = value.beforeRun;
+        const afterRun = value.afterRun;
         const scenario = value.scenario;
         const replay = createVerifiedReplay({ beforeRun, afterRun, scenarioHash: hash(scenario), ruleSetHash: hash(afterRun.runtimeVerification?.findings.map((finding) => finding.ruleId).sort()) });
         const privateKeyPem = process.env.PASSPORT_PRIVATE_KEY_PEM;
@@ -125,18 +179,18 @@ export async function startLocalRunner(options: RunnerOptions): Promise<RunnerHa
           runResult: afterRun,
           replay,
           repository: snapshot.project.root,
-          commit: String(value.commit ?? process.env.CRUCIBLE_COMMIT ?? 'local-uncommitted'),
-          runtimeVersion: String(value.runtimeVersion ?? 'local-anvil'),
+          commit: value.commit ?? process.env.CRUCIBLE_COMMIT ?? 'local-uncommitted',
+          runtimeVersion: value.runtimeVersion ?? 'local-anvil',
           journeyHashes: Object.fromEntries(afterRun.runtimeVerification?.findings.map((finding) => [finding.journeyId, hash(finding)]) ?? []),
-          issuer: String(value.issuer ?? 'crucible-local-runner'),
+          issuer: value.issuer ?? 'crucible-local-runner',
           privateKeyPem
         });
         persisted = { ...persisted, scenario, beforeRun, afterRun, replay, passport, updatedAt: new Date().toISOString() };
         await writeState(root, persisted);
-        return json(response, 200, { passport, replay });
+        return json(response, 200, { passport, replay }, origin);
       }
       if (path === '/passport/publish') {
-        const value = input as Record<string, unknown>;
+        const value = PublishRequestSchema.parse(input);
         const passport = verifyRuntimePassport(value.passport);
         const registry = String(value.registry ?? '');
         if (!/^0x[a-fA-F0-9]{40}$/.test(registry)) throw new Error('Invalid registry address.');
@@ -154,20 +208,20 @@ export async function startLocalRunner(options: RunnerOptions): Promise<RunnerHa
         const published = attachPassportAttestation(passport, { chainId, registryAddress: registry as `0x${string}`, transactionHash, suiteVersion: passport.suiteVersion });
         persisted = { ...persisted, passport: published, updatedAt: new Date().toISOString() };
         await writeState(root, persisted);
-        return json(response, 200, { passport: published });
+        return json(response, 200, { passport: published }, origin);
       }
       if (path === '/diagnose') {
-        const value = input as Record<string, unknown>;
-        const result = value.runResult as import('@crucible/core').RunResult;
+        const value = z.object({ runResult: RunResultSchema, scenario: ScenarioSchema, source: z.string().optional() }).strict().parse(input);
+        const result = value.runResult;
         const scenario = value.scenario;
         const apiKey = process.env.AI_API_KEY;
         const client = apiKey ? createOpenAICompatibleClient({ apiKey, endpoint: process.env.AI_API_URL ?? 'https://api.openai.com/v1/chat/completions', model: process.env.AI_MODEL ?? 'gpt-4o-mini' }) : undefined;
         const diagnosis = await diagnoseWithModel({ runResult: result, scenario, source: typeof value.source === 'string' ? value.source : undefined }, { client, fallback: fallbackDiagnosis(result) });
-        return json(response, 200, diagnosis);
+        return json(response, 200, diagnosis, origin);
       }
       if (path === '/remediate') {
-        const value = input as Record<string, unknown>;
-        const finding = value.finding as import('@crucible/core').RuntimeFinding;
+        const value = RemediateRequestSchema.parse(input);
+        const finding = value.finding;
         const scenario = value.scenario;
         const fallback = {
           status: 'ai-suggested',
@@ -181,18 +235,18 @@ export async function startLocalRunner(options: RunnerOptions): Promise<RunnerHa
           confidence: 0.65
         };
         const result = await remediateRuntimeFinding({ finding, scenario }, { fallback });
-        return json(response, 200, result);
+        return json(response, 200, result, origin);
       }
       if (path === '/replay') {
-        const value = input as Record<string, unknown>;
-        const beforeRun = value.beforeRun as import('@crucible/core').RunResult;
-        const afterRun = value.afterRun as import('@crucible/core').RunResult;
+        const value = z.object({ beforeRun: RunResultSchema, afterRun: RunResultSchema, scenario: z.unknown() }).strict().parse(input);
+        const beforeRun = value.beforeRun;
+        const afterRun = value.afterRun;
         const replay = createVerifiedReplay({ beforeRun, afterRun, scenarioHash: hash(value.scenario), ruleSetHash: hash(afterRun.runtimeVerification?.findings.map((finding) => finding.ruleId).sort()) });
-        return json(response, 200, replay);
+        return json(response, 200, replay, origin);
       }
-      return json(response, 404, { error: 'Not found' });
+      return json(response, 404, { error: 'Not found' }, origin);
     } catch (error) {
-      return json(response, 400, { error: error instanceof Error ? error.message : String(error) });
+      return json(response, 400, { error: error instanceof Error ? error.message : String(error) }, origin);
     }
   });
   await new Promise<void>((resolve, reject) => {

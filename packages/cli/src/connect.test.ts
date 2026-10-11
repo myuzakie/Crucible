@@ -16,6 +16,11 @@ async function fixture(name: string): Promise<unknown> {
   return JSON.parse(await readFile(join(root, 'apps/web/public/results', name), 'utf8')) as unknown;
 }
 
+async function scenario(): Promise<unknown> {
+  const root = process.cwd().endsWith('/packages/cli') ? join(process.cwd(), '..', '..') : process.cwd();
+  return JSON.parse(await readFile(join(root, 'examples/monad-erc20-demo/scenarios/buggy-mint.json'), 'utf8')) as unknown;
+}
+
 test('local runner generates and persists a Runtime Passport without exposing its signing key', async () => {
   const root = await mkdtemp(join(tmpdir(), 'crucible-m21d-'));
   const previous = process.env.PASSPORT_PRIVATE_KEY_PEM;
@@ -24,7 +29,8 @@ test('local runner generates and persists a Runtime Passport without exposing it
   try {
     const beforeRun = await fixture('monad-runtime-vulnerable.json');
     const afterRun = await fixture('monad-runtime-fixed.json');
-    const response = await fetch(`${runner.url}/passport`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun, scenario: { name: 'm21d' } }) });
+    const scenarioValue = await scenario();
+    const response = await fetch(`${runner.url}/passport`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun, scenario: scenarioValue }) });
     assert.equal(response.status, 200);
     const payload = await response.json() as { passport: { passportHash: string; signature: { publicKey: string } } };
     assert.match(payload.passport.passportHash, /^[a-f0-9]{64}$/);
@@ -33,7 +39,7 @@ test('local runner generates and persists a Runtime Passport without exposing it
     assert.equal(state.status, 200);
     const persisted = await state.json() as { passport?: { passportHash: string } };
     assert.equal(persisted.passport?.passportHash, payload.passport.passportHash);
-    const rejected = await fetch(`${runner.url}/passport`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun: afterRun, afterRun, scenario: { name: 'invalid-replay' } }) });
+    const rejected = await fetch(`${runner.url}/passport`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun: afterRun, afterRun, scenario: scenarioValue }) });
     assert.equal(rejected.status, 400);
   } finally {
     await runner.close();
@@ -63,7 +69,8 @@ test('local runner publishes a verified Passport to a local registry', async () 
     assert.ok(receipt.contractAddress);
     const beforeRun = await fixture('monad-runtime-vulnerable.json');
     const afterRun = await fixture('monad-runtime-fixed.json');
-    const passportResponse = await fetch(`${runner.url}/passport`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun, scenario: { name: 'm21d-publish' } }) });
+    const scenarioValue = await scenario();
+    const passportResponse = await fetch(`${runner.url}/passport`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun, scenario: scenarioValue }) });
     const passportPayload = await passportResponse.json() as { passport: unknown };
     const publishResponse = await fetch(`${runner.url}/passport/publish`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ passport: passportPayload.passport, registry: receipt.contractAddress, rpc: anvil.rpcUrl }) });
     assert.equal(publishResponse.status, 200);
@@ -75,5 +82,30 @@ test('local runner publishes a verified Passport to a local registry', async () 
     await runner.close(); await anvil.stop(); await rm(root, { recursive: true, force: true });
     if (previousPassportKey === undefined) delete process.env.PASSPORT_PRIVATE_KEY_PEM; else process.env.PASSPORT_PRIVATE_KEY_PEM = previousPassportKey;
     if (previousDeployerKey === undefined) delete process.env.DEPLOYER_PRIVATE_KEY; else process.env.DEPLOYER_PRIVATE_KEY = previousDeployerKey;
+  }
+});
+
+test('local runner enforces origin allowlist and validates structured requests', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'crucible-m22-security-'));
+  const runner = await startLocalRunner({ root, port: 0, allowedOrigins: ['https://app.example.test'] });
+  try {
+    const allowed = await fetch(`${runner.url}/health`, { headers: { origin: 'https://app.example.test' } });
+    assert.equal(allowed.status, 200);
+    assert.equal(allowed.headers.get('access-control-allow-origin'), 'https://app.example.test');
+
+    const unknown = await fetch(`${runner.url}/health`, { headers: { origin: 'https://evil.example.test' } });
+    assert.equal(unknown.status, 403);
+    assert.equal(unknown.headers.get('access-control-allow-origin'), null);
+
+    const malformed = await fetch(`${runner.url}/runs`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://app.example.test' },
+      body: JSON.stringify({ scenario: { name: 'not-a-scenario' } })
+    });
+    assert.equal(malformed.status, 400);
+    assert.match(await malformed.text(), /Invalid input|nodes|network/);
+  } finally {
+    await runner.close();
+    await rm(root, { recursive: true, force: true });
   }
 });
