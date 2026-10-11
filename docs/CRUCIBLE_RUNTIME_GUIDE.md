@@ -32,15 +32,16 @@ M21-A menambahkan project workspace untuk repository lokal. Web tetap menjadi
 control plane; filesystem dan detector berjalan di local runner yang sengaja
 di-scope ke satu root repository.
 
-1. Jalankan runner dari root Crucible dengan path repository target:
+1. Jalankan public runner command dari root repository target:
 
    ```bash
-   pnpm crucible connect --root /path/to/your/foundry-repository --port 8787
+   pnpm dlx @ohmuzakie/crucible-cli@latest connect --root .
    ```
 
-2. Jalankan Web, lalu buka `http://127.0.0.1:5173/?project=1`.
-3. Isi nama project dan URL `http://127.0.0.1:8787`, lalu klik **Connect &
-   detect repository**.
+2. Jalankan Web, lalu buka halaman Projects.
+3. URL runner default adalah `http://127.0.0.1:8787`; gunakan **Advanced
+   settings** hanya jika runner memakai port atau host lain.
+4. Isi nama project, lalu klik **Connect & detect repository**.
 4. Baca status toolchain, jumlah artifact, scenario, dan next step pada panel
    **Repository detection**.
 5. Jika artifact sudah ada, pilih contract pada **Contract explorer** untuk
@@ -86,6 +87,29 @@ konfirmasi, runner hanya melakukan preflight. Confirmed execution memakai
 `MONAD_TESTNET_RPC_URL` dan actor key yang direferensikan scenario dari
 environment runner; jangan menaruh private key di browser, file scenario, atau
 git.
+
+### M21-D: Trust & Acceptance
+
+Setelah replay menampilkan `Runtime Verified`, klik **Generate Passport**. Runner
+menandatangani Passport memakai `PASSPORT_PRIVATE_KEY_PEM` dari environment
+runner; browser hanya menerima Passport yang dapat diverifikasi dan dapat
+mengunduhnya. State terakhir disimpan di `crucible/results/m21d-state.json` dan
+dipulihkan saat project reconnect.
+
+Untuk publish lokal, isi alamat registry hasil deploy Anvil lalu klik **Publish
+locally**. Runner memakai `DEPLOYER_PRIVATE_KEY`, memverifikasi chain ID dan
+receipt, lalu menyimpan metadata attestation. Tidak ada key yang masuk request
+Web atau Passport.
+
+Gate lengkap:
+
+```bash
+pnpm m21d:check
+```
+
+Gate ini menjalankan judge/demo verification, Web build/deploy check, dan
+external repository acceptance menggunakan package CLI. Request Web memiliki
+satu retry otomatis; state tersimpan tidak hilang saat reload.
 
 Fixture viewer tetap tersedia di `http://127.0.0.1:5173/` dan mode developer
 di `http://127.0.0.1:5173/?debug=1`.

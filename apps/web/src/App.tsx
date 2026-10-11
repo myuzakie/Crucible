@@ -4,6 +4,7 @@ import { validateDiagnosisForResult, type Diagnosis } from '@crucible/ai';
 import { findingsForJourney, replaySequence, runtimeFindings, runtimeJourneys, validateResult, type RunResult } from './viewer.js';
 import { RuntimeFlow } from './RuntimeFlow.js';
 import { ProjectOnboarding } from './ProjectOnboarding.js';
+import { AlertCircle, Bug, FolderGit2, History, LayoutDashboard, ShieldCheck } from 'lucide-react';
 
 const fixtures = [
   { label: 'Monad runtime vulnerable', file: '/results/monad-runtime-vulnerable.json' },
@@ -22,7 +23,8 @@ const journeyMeta: Record<string, { title: string; flow: string; description: st
 };
 
 const debugMode = new URLSearchParams(window.location.search).get('debug') === '1';
-const projectMode = new URLSearchParams(window.location.search).get('project') === '1';
+const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
+const projectMode = !debugMode && !demoMode;
 
 function journeyLabel(id: string) { return journeyMeta[id]?.title ?? id.replaceAll('-', ' '); }
 function formatDate(value: string) { return new Date(value).toLocaleString(); }
@@ -145,7 +147,7 @@ export function App() {
   }
 
   return <main className="shell">
-    <aside className="sidebar" aria-label="Crucible navigation"><div className="brand-lockup"><div className="brand-mark">C</div><div><strong>CRUCIBLE</strong><span>Runtime verification</span></div></div><nav className="side-nav"><a className="active" href="#journeys"><span>⌁</span>Journeys</a><a href="?project=1"><span>□</span>Projects</a><a href="#issues"><span>!</span>Issues{failedCount ? <b>{failedCount}</b> : null}</a><a href="#replay"><span>↻</span>Replay</a><a href="#passport"><span>◇</span>Passport</a></nav><div className="sidebar-bottom"><div className="sidebar-label">PROJECT</div><div className="project-card"><span className="project-dot" />Monad Runtime Demo<strong>monad-core</strong></div><span className="environment-dot" />{environmentLabel}<small>Chain {result?.network.chainId ?? '—'}</small></div></aside>
+    <aside className="sidebar" aria-label="Crucible navigation"><div className="brand-lockup"><div className="brand-mark">C</div><div><strong>CRUCIBLE</strong><span>Runtime verification</span></div></div><nav className="side-nav"><a className="active" href="#journeys"><LayoutDashboard size={16} aria-hidden="true" />Journeys</a><a href="/"><FolderGit2 size={16} aria-hidden="true" />Projects</a><a href="#issues"><AlertCircle size={16} aria-hidden="true" />Issues{failedCount ? <b>{failedCount}</b> : null}</a><a href="#replay"><History size={16} aria-hidden="true" />Replay</a><a href="#passport"><ShieldCheck size={16} aria-hidden="true" />Passport</a></nav><div className="sidebar-bottom"><div className="sidebar-label">CURRENT RUN</div><div className="project-card"><span className="project-dot" />{environmentLabel}<strong>{result?.scenario ?? 'No run selected'}</strong></div><a className="sidebar-demo-link" href="?debug=1"><Bug size={13} aria-hidden="true" />Developer fixtures</a></div></aside>
     <div className="workspace"><header className="topbar"><div><p className="eyebrow">CRUCIBLE / MONAD RUNTIME VERIFICATION</p><h1>Verify your Monad app</h1><p className="lede">Test real user journeys and see where they break before your users do.</p></div><div className="topbar-actions"><span className={`environment-badge ${result?.network.name === 'monad-fixture' ? 'fixture' : 'live'}`}><span />{environmentLabel}</span>{debugMode ? <label className="fixture-picker">Developer fixture<select value={fixture} onChange={(event) => setFixture(event.target.value)}>{fixtures.map((item) => <option key={item.file} value={item.file}>{item.label}</option>)}</select></label> : <a className="debug-link" href={`${window.location.pathname}?debug=1`}>Developer fixtures</a>}</div></header>
       {error ? <section className="error-card" role="alert"><strong>We couldn't load this verification result.</strong><p>The result does not match the Crucible RunResult schema.</p><details><summary>View technical details</summary><code>{error}</code></details><a className="secondary-button" href={window.location.pathname}>Try another run</a></section> : null}
       {!error && !result ? <section className="state-card" aria-live="polite">Loading verification…</section> : null}
