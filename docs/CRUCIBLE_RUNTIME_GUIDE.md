@@ -42,14 +42,30 @@ di-scope ke satu root repository.
 3. URL runner default adalah `http://127.0.0.1:8787`; gunakan **Advanced
    settings** hanya jika runner memakai port atau host lain.
 4. Isi nama project, lalu klik **Connect & detect repository**.
-4. Baca status toolchain, jumlah artifact, scenario, dan next step pada panel
+5. Baca status toolchain, jumlah artifact, scenario, dan next step pada panel
    **Repository detection**.
-5. Jika artifact sudah ada, pilih contract pada **Contract explorer** untuk
+6. Jika artifact sudah ada, pilih contract pada **Contract explorer** untuk
    melihat fungsi ABI yang benar-benar dibaca dari `out/`. Crucible tidak
    mengarang contract atau fungsi.
 
+Runner default hanya bind ke `127.0.0.1` dan menerima request browser tanpa
+`Origin` (misalnya CLI) atau dari `http://127.0.0.1:5173` dan
+`http://localhost:5173`. Origin lain ditolak. Untuk production Web, set
+allowlist eksplisit sebelum menjalankan runner:
+
+```bash
+CRUCIBLE_ALLOWED_ORIGINS=https://app.example.com \
+  pnpm dlx @ohmuzakie/crucible-cli@latest connect --root .
+```
+
+Runner tidak menerima shell command dari browser, memvalidasi payload compile,
+run, diagnosis, remediation, replay, dan Passport dengan schema, dan menolak
+root Foundry atau direktori state yang keluar melalui symlink. Jangan memakai
+`--host 0.0.0.0` kecuali ada network boundary dan allowlist yang benar-benar
+terkontrol.
+
 Endpoint runner M21-A bersifat read-only: `/health`, `/project`, dan
-`/contracts`. Runner tidak menerima shell command dari browser. Jika status
+`/contracts`. Jika status
 menunjukkan `MISSING_ARTIFACT`, jalankan `forge build` di repository target,
 lalu reconnect. Jika `UNSUPPORTED_TOOLCHAIN`, repository belum memiliki
 `foundry.toml` yang didukung adapter saat ini.
