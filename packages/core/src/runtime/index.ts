@@ -74,12 +74,30 @@ export const RuntimeVerificationSchema = z
   })
   .strict();
 
+export const RuntimeReplaySummarySchema = z
+  .object({
+    status: z.literal('runtime-verified'),
+    beforeRunId: z.string().min(1),
+    afterRunId: z.string().min(1),
+    scenarioHash: z.string().min(1),
+    suiteVersion: z.string().min(1),
+    profile: VerificationProfileSchema,
+    ruleSetHash: z.string().min(1),
+    diffSummary: z.object({
+      recoveredJourneys: z.array(z.string().min(1)),
+      failedBefore: z.number().int().nonnegative(),
+      passedAfter: z.number().int().nonnegative()
+    }).strict()
+  })
+  .strict();
+
 export type RuntimeRuleId = z.infer<typeof RuntimeRuleIdSchema>;
 export type RuntimeRule = z.infer<typeof RuntimeRuleSchema>;
 export type RuntimeEvidence = z.infer<typeof RuntimeEvidenceSchema>;
 export type RuntimeFinding = z.infer<typeof RuntimeFindingSchema>;
 export type VerificationProfile = z.infer<typeof VerificationProfileSchema>;
 export type RuntimeVerification = z.infer<typeof RuntimeVerificationSchema>;
+export type RuntimeReplaySummary = z.infer<typeof RuntimeReplaySummarySchema>;
 
 export const MONAD_CORE_RULE_IDS = [
   'MND-TIME-001',

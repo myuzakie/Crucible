@@ -210,6 +210,12 @@ export function App() {
             <div><span>Network</span><strong>{result.network.name} · {result.network.chainId}</strong></div>
             <div><span>Finished</span><strong>{formatDate(result.finishedAt)}</strong></div>
           </section>
+          {result.verifiedReplay ? (
+            <section className="replay-proof panel" aria-label="Verified replay">
+              <div><p className="eyebrow">VERIFIED REPLAY</p><h2>Journey recovered</h2><p>Same scenario, profile, suite, and rule set passed after remediation.</p></div>
+              <div className="replay-proof-grid"><div><span>Before</span><strong>{result.verifiedReplay.beforeRunId}</strong></div><div><span>After</span><strong>{result.verifiedReplay.afterRunId}</strong></div><div><span>Recovered</span><strong>{result.verifiedReplay.diffSummary.recoveredJourneys.length} journeys</strong></div><div><span>Status</span><strong className="status-text passed">Runtime Verified</strong></div></div>
+            </section>
+          ) : null}
           <section className="content-grid">
             <div className="panel flow-panel">
               <div className="panel-heading">
@@ -270,7 +276,7 @@ export function App() {
                   <div className="inspector-section"><span className="inspector-label">What happened</span><p>{selectedFinding.summary}</p><dl><dt>Rule</dt><dd>{selectedFinding.ruleId}</dd><dt>Journey</dt><dd>{journeyLabel(selectedFinding.journeyId)}</dd><dt>Node</dt><dd>{selectedFinding.nodeId}</dd></dl></div>
                   <div className="inspector-section"><span className="inspector-label">Runtime evidence</span><ul className="evidence-list">{selectedFinding.evidence.map((evidence, index) => <li key={`${selectedFinding.findingId}-${index}`}><code>{evidence.type}</code> · {JSON.stringify(evidence.observed)}</li>)}</ul></div>
                   <div className="inspector-section"><span className="inspector-label">Monad rule</span><p>{selectedFinding.ruleId} requires the observed runtime behavior to match the expected condition.</p><a href="https://docs.monad.xyz/architecture/consensus" target="_blank" rel="noreferrer">Open Monad documentation ↗</a></div>
-                  <div className="inspector-section"><span className="inspector-label">Suggested remediation</span><p>{selectedFinding.status === 'failed' ? 'Review the journey timing/assurance guard and replay the same scenario after the change.' : 'No remediation required for this finding.'}</p></div>
+                  <div className="inspector-section"><span className="inspector-label">AI Suggested</span><p>{selectedFinding.status === 'failed' ? 'Review the journey timing/assurance guard and replay the same scenario after the change.' : 'No remediation required for this finding.'}</p></div>
                   {selected ? <div className="inspector-section technical"><span className="inspector-label">Source / technical details</span><p>Node {selected.id} · {selected.durationMs}ms · {selected.txHash ?? 'fixture evidence'}</p></div> : null}
                 </>
               ) : selected ? (

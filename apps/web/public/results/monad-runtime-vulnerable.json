@@ -18,6 +18,16 @@
     { "id": "highest-bid", "status": "skipped", "durationMs": 0 }
   ],
   "summary": { "passed": 2, "failed": 3, "skipped": 3 },
+  "verifiedReplay": {
+    "status": "runtime-verified",
+    "beforeRunId": "monad-runtime-vulnerable",
+    "afterRunId": "monad-runtime-fixed",
+    "scenarioHash": "runtime-demo-scenario-v1",
+    "suiteVersion": "1.0.0",
+    "profile": "monad-core",
+    "ruleSetHash": "monad-core-rules-v1",
+    "diffSummary": { "recoveredJourneys": ["new-user-purchase", "settlement", "auction"], "failedBefore": 3, "passedAfter": 3 }
+  },
   "runtimeVerification": {
     "profile": "monad-core",
     "suiteVersion": "1.0.0",

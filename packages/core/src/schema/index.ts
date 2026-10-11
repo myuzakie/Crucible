@@ -1,12 +1,17 @@
 import { z } from 'zod';
 import {
+  RuntimeFindingSchema,
+  RuntimeReplaySummarySchema,
   RuntimeVerificationSchema,
   type RuntimeEvidence,
   type RuntimeFinding,
+  type RuntimeReplaySummary,
   type RuntimeRule,
   type RuntimeVerification,
   type VerificationProfile
 } from '../runtime/index.js';
+
+export { RuntimeFindingSchema } from '../runtime/index.js';
 
 const NodeId = z.string().min(1);
 const Args = z.array(z.unknown()).default([]);
@@ -129,7 +134,8 @@ export const RunResultSchema = z.object({
     failed: z.number().int().nonnegative(),
     skipped: z.number().int().nonnegative()
   }),
-  runtimeVerification: RuntimeVerificationSchema.optional()
+  runtimeVerification: RuntimeVerificationSchema.optional(),
+  verifiedReplay: RuntimeReplaySummarySchema.optional()
 });
 
 export type Scenario = z.infer<typeof ScenarioSchema>;
@@ -141,6 +147,7 @@ export type RunResult = z.infer<typeof RunResultSchema>;
 export type {
   RuntimeEvidence,
   RuntimeFinding,
+  RuntimeReplaySummary,
   RuntimeRule,
   RuntimeVerification,
   VerificationProfile
