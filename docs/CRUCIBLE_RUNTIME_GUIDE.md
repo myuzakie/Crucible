@@ -1,6 +1,6 @@
 # Crucible Runtime Verification Guide
 
-Versi dokumen: `0.3`  
+Versi dokumen: `0.4`  
 Profile demo: `monad-core`  
 Mode default: fixture/offline
 
@@ -52,6 +52,40 @@ Endpoint runner M21-A bersifat read-only: `/health`, `/project`, dan
 menunjukkan `MISSING_ARTIFACT`, jalankan `forge build` di repository target,
 lalu reconnect. Jika `UNSUPPORTED_TOOLCHAIN`, repository belum memiliki
 `foundry.toml` yang didukung adapter saat ini.
+
+### M21-B: Compile dan run journey
+
+Setelah contract terdeteksi, gunakan **Manual Journey Builder** untuk memilih
+contract, satu fungsi write, satu fungsi read/assertion, argumen, expected
+value, dan optional source file. Tombol **Compile journey** hanya membuat
+scenario tervalidasi di memory; tombol **Run verification** mengirim scenario
+tersebut ke local runner. Runner menjalankan `forge build`, Anvil baru, dan
+execution scenario yang sama dengan CLI. Hasilnya dikembalikan sebagai
+`RunResult`, lalu ditampilkan pada React Flow live dan inspector.
+
+Source mapping bersifat deklaratif. Crucible hanya menampilkan file/symbol/line
+yang diberikan di scenario; ia tidak menebak source location.
+
+### M21-C: Runtime intelligence
+
+Local run menambahkan verification generic berbasis assertion evidence. Jika run
+gagal, Web meminta diagnosis evidence-bound. Tanpa `AI_API_KEY`, Crucible
+memakai fallback deterministic yang hanya mengutip node/error dari run. Dengan
+provider server-side, set `AI_API_KEY`, optional `AI_API_URL`, dan `AI_MODEL` di
+environment runner. Secret tidak pernah dikirim ke browser atau disimpan di
+scenario.
+
+**Suggested Fix** selalu berstatus `AI SUGGESTED`; Crucible tidak mengedit
+repository otomatis dan tidak menyebut run sebagai verified. Setelah scenario
+diperbaiki, jalankan lagi. Endpoint replay hanya menerbitkan
+`runtime-verified` jika before run gagal, after run pass, profile/suite/rule set
+sama, dan evidence kedua run valid.
+
+Untuk Monad Testnet, pilih mode **Monad Testnet / guarded**. Tanpa checkbox
+konfirmasi, runner hanya melakukan preflight. Confirmed execution memakai
+`MONAD_TESTNET_RPC_URL` dan actor key yang direferensikan scenario dari
+environment runner; jangan menaruh private key di browser, file scenario, atau
+git.
 
 Fixture viewer tetap tersedia di `http://127.0.0.1:5173/` dan mode developer
 di `http://127.0.0.1:5173/?debug=1`.
