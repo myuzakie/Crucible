@@ -71,6 +71,15 @@ Run the deterministic gate before a demo:
 pnpm demo:check
 ```
 
+For the complete Product Phase 2 judge path, run:
+
+```bash
+pnpm judge:check
+```
+
+Then follow [JUDGE_README.md](JUDGE_README.md). The submission checklist is in
+[SUBMISSION_FREEZE.md](SUBMISSION_FREEZE.md).
+
 It validates the happy/buggy scenarios, RunResult fixtures, diagnosis evidence, offline certificate, Web assets, and the malformed-result fallback. It does not call Monad or require a wallet.
 
 Recommended demo order:
