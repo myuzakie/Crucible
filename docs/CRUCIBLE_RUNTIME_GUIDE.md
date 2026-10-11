@@ -30,14 +30,16 @@ Angka dan istilah di atas adalah konteks protokol. `MND-TIME-001`, `MND-FINALITY
 pnpm --filter @crucible/web dev --host 127.0.0.1
 ```
 
-Buka `http://127.0.0.1:5173`.
+Buka `http://127.0.0.1:5173`. Halaman utama dimulai dari **Journeys**, bukan
+dashboard metrics. Fixture generic untuk debugging tersedia melalui
+`http://127.0.0.1:5173/?debug=1`.
 
-1. Pilih `Monad runtime vulnerable` untuk melihat tiga journey gagal.
-2. Gunakan `Business View` untuk memilih `New User Purchase`, `Settlement`, atau `Auction`.
-3. Baca `Runtime Finding Inspector`: user impact, summary, rule, journey, node, evidence, dan saran remediasi.
-4. Gunakan `Runtime / Evidence` untuk melihat tiga rule Monad secara ringkas.
+1. Pilih `New User Purchase`, `Settlement`, atau `Auction`, lalu klik `Run journey`.
+2. Ikuti Business View: langkah user yang pass, gagal, atau blocked.
+3. Baca issue inspector: user impact, what happened, why Monad, evidence, dan suggested fix.
+4. Gunakan `Runtime Evidence` untuk melihat tiga rule Monad secara ringkas.
 5. Gunakan `Technical View` untuk menelusuri execution node dan tombol `Replay` untuk memutar flow sampai failure pertama.
-6. Pilih `Monad runtime fixed`. Semua finding harus pass dan halaman menampilkan `Runtime Verified` serta `Version-bound proof eligible`.
+6. Klik `Test this fix` untuk membuka paired fixed fixture. Semua check harus pass dan halaman menampilkan `Runtime Verified` serta `Version-bound proof eligible`.
 
 Viewer fixture tidak memerlukan wallet, RPC, private key, atau provider AI. Diagnosis `Buggy mint` akan mencoba endpoint `/api/diagnose`, lalu menggunakan diagnosis cache jika endpoint tidak tersedia. Itu adalah fallback yang disengaja, bukan bukti live AI.
 
