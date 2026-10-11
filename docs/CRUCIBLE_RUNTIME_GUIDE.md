@@ -87,6 +87,29 @@ konfirmasi, runner hanya melakukan preflight. Confirmed execution memakai
 environment runner; jangan menaruh private key di browser, file scenario, atau
 git.
 
+### M21-D: Trust & Acceptance
+
+Setelah replay menampilkan `Runtime Verified`, klik **Generate Passport**. Runner
+menandatangani Passport memakai `PASSPORT_PRIVATE_KEY_PEM` dari environment
+runner; browser hanya menerima Passport yang dapat diverifikasi dan dapat
+mengunduhnya. State terakhir disimpan di `crucible/results/m21d-state.json` dan
+dipulihkan saat project reconnect.
+
+Untuk publish lokal, isi alamat registry hasil deploy Anvil lalu klik **Publish
+locally**. Runner memakai `DEPLOYER_PRIVATE_KEY`, memverifikasi chain ID dan
+receipt, lalu menyimpan metadata attestation. Tidak ada key yang masuk request
+Web atau Passport.
+
+Gate lengkap:
+
+```bash
+pnpm m21d:check
+```
+
+Gate ini menjalankan judge/demo verification, Web build/deploy check, dan
+external repository acceptance menggunakan package CLI. Request Web memiliki
+satu retry otomatis; state tersimpan tidak hilang saat reload.
+
 Fixture viewer tetap tersedia di `http://127.0.0.1:5173/` dan mode developer
 di `http://127.0.0.1:5173/?debug=1`.
 

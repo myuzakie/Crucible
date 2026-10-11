@@ -7,6 +7,7 @@ import type { RuntimeReplaySummary } from '@crucible/core';
 import { RuntimeFlow } from './RuntimeFlow.js';
 
 type SavedProject = { id: string; name: string; runnerUrl: string; connectedAt?: string };
+type RuntimePassport = { passportId: string; passportHash: string; verificationProfile: string; suiteVersion: string; onChain?: { chainId: number; registryAddress: string; transactionHash: string } };
 const STORAGE_KEY = 'crucible.projects.v1';
 
 function loadProjects(): SavedProject[] {
@@ -37,6 +38,8 @@ export function ProjectOnboarding() {
   const [remediation, setRemediation] = useState<RuntimeRemediation | null>(null);
   const [beforeRun, setBeforeRun] = useState<RunResult | null>(null);
   const [replay, setReplay] = useState<RuntimeReplaySummary | null>(null);
+  const [passport, setPassport] = useState<RuntimePassport | null>(null);
+  const [registry, setRegistry] = useState('');
 
   const activeContract = useMemo(() => snapshot?.contracts.find((contract) => contract.name === selectedContract) ?? snapshot?.contracts[0], [selectedContract, snapshot]);
 
@@ -51,18 +54,38 @@ export function ProjectOnboarding() {
   }, [snapshot, contract]);
   function save(next: SavedProject[]) { setProjects(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); }
 
+  async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 10000);
+      try {
+        const response = await fetch(url, { ...init, signal: controller.signal });
+        const payload = await response.json() as T & { error?: string; message?: string };
+        if (!response.ok) throw new Error(payload.message ?? payload.error ?? `Runner returned ${response.status}.`);
+        return payload;
+      } catch (error) {
+        lastError = error;
+        if (attempt === 0) await new Promise((resolve) => window.setTimeout(resolve, 250));
+      } finally { window.clearTimeout(timer); }
+    }
+    throw lastError instanceof Error ? lastError : new Error('Runner request failed. Reconnect the project and retry.');
+  }
+
   async function connect(url = runnerUrl, projectName = name) {
     setBusy(true); setStatus('Connecting to the local runner…');
     try {
       const base = url.replace(/\/$/, '');
-      const health = await fetch(`${base}/health`);
-      if (!health.ok) throw new Error(`Runner returned ${health.status}.`);
-      const response = await fetch(`${base}/project`);
-      if (!response.ok) throw new Error(`Repository detection returned ${response.status}.`);
-      const next = await response.json() as ProjectSnapshot;
+      await requestJson(`${base}/health`);
+      const next = await requestJson<ProjectSnapshot>(`${base}/project`);
       setSnapshot(next); setStatus(`Connected. Detected ${next.project.name}.`);
       const project = { id: `${base}:${next.project.root}`, name: projectName.trim() || next.project.name, runnerUrl: base, connectedAt: new Date().toISOString() };
       save([project, ...projects.filter((item) => item.id !== project.id)]);
+      const state = await requestJson<{ passport?: RuntimePassport; replay?: RuntimeReplaySummary; beforeRun?: RunResult; afterRun?: RunResult }>(`${base}/state`);
+      if (state.passport) setPassport(state.passport);
+      if (state.replay) setReplay(state.replay);
+      if (state.beforeRun) setBeforeRun(state.beforeRun);
+      if (state.afterRun) setRunResult(state.afterRun);
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Unable to connect. Start `crucible connect` first.'); }
     finally { setBusy(false); }
   }
@@ -70,9 +93,8 @@ export function ProjectOnboarding() {
   async function compile() {
     setBusy(true); setStatus('Compiling the journey against the detected ABI…');
     try {
-      const response = await fetch(`${runnerUrl.replace(/\/$/, '')}/journeys/compile`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: name.trim() || 'manual-journey', contract, call, assertion, callArgs: callArgs ? callArgs.split(',').map((item) => item.trim()) : [], assertionArgs: assertionArgs ? assertionArgs.split(',').map((item) => item.trim()) : [], expected: expected || undefined, source: sourceFile ? { file: sourceFile } : undefined }) });
-      const payload = await response.json() as { scenario?: Scenario; error?: string };
-      if (!response.ok || !payload.scenario) throw new Error(payload.error ?? `Journey compiler returned ${response.status}.`);
+      const payload = await requestJson<{ scenario?: Scenario }>(`${runnerUrl.replace(/\/$/, '')}/journeys/compile`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: name.trim() || 'manual-journey', contract, call, assertion, callArgs: callArgs ? callArgs.split(',').map((item) => item.trim()) : [], assertionArgs: assertionArgs ? assertionArgs.split(',').map((item) => item.trim()) : [], expected: expected || undefined, source: sourceFile ? { file: sourceFile } : undefined }) });
+      if (!payload.scenario) throw new Error('Journey compiler returned no scenario.');
       setCompiled(payload.scenario); setRunResult(null); setStatus('Journey compiled and validated.');
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Unable to compile journey.'); }
     finally { setBusy(false); }
@@ -82,30 +104,54 @@ export function ProjectOnboarding() {
     if (!compiled) return;
     setBusy(true); setStatus(runMode === 'local' ? 'Running local verification on a fresh Anvil chain…' : 'Running guarded Monad Testnet preflight…');
     try {
-      const response = await fetch(`${runnerUrl.replace(/\/$/, '')}/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: runMode, confirmed: confirmTestnet, scenario: compiled }) });
-      const payload = await response.json() as { result?: RunResult; error?: string; message?: string };
-      if (!response.ok || !payload.result) throw new Error(payload.message ?? payload.error ?? `Runner returned ${response.status}.`);
+      const payload = await requestJson<{ result?: RunResult }>(`${runnerUrl.replace(/\/$/, '')}/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: runMode, confirmed: confirmTestnet, scenario: compiled }) });
+      if (!payload.result) throw new Error('Runner returned no result.');
       const next = payload.result;
       if (next.status === 'failed' && !beforeRun) setBeforeRun(next);
       setRunResult(next); setSelectedNode(next.nodes[0]?.id ?? ''); setStatus(next.status === 'passed' ? 'Verification passed.' : 'Verification finished with findings.');
       if (next.status === 'failed') {
-        const diagnosisResponse = await fetch(`${runnerUrl.replace(/\/$/, '')}/diagnose`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ runResult: next, scenario: compiled }) });
-        const diagnosisPayload = await diagnosisResponse.json() as { diagnosis?: Diagnosis; source?: string };
+        const diagnosisPayload = await requestJson<{ diagnosis?: Diagnosis }>(`${runnerUrl.replace(/\/$/, '')}/diagnose`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ runResult: next, scenario: compiled }) });
         if (diagnosisPayload.diagnosis) {
           setDiagnosis(diagnosisPayload.diagnosis);
           const finding = next.runtimeVerification?.findings.find((item) => item.status === 'failed');
           if (finding) {
-            const remediationResponse = await fetch(`${runnerUrl.replace(/\/$/, '')}/remediate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ finding, scenario: compiled }) });
-            const remediationPayload = await remediationResponse.json() as { remediation?: RuntimeRemediation };
+            const remediationPayload = await requestJson<{ remediation?: RuntimeRemediation }>(`${runnerUrl.replace(/\/$/, '')}/remediate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ finding, scenario: compiled }) });
             if (remediationPayload.remediation) setRemediation(remediationPayload.remediation);
           }
         }
       } else if (beforeRun?.status === 'failed') {
-        const replayResponse = await fetch(`${runnerUrl.replace(/\/$/, '')}/replay`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun: next, scenario: compiled }) });
-        if (replayResponse.ok) setReplay(await replayResponse.json() as RuntimeReplaySummary);
+        const replayPayload = await requestJson<RuntimeReplaySummary>(`${runnerUrl.replace(/\/$/, '')}/replay`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun: next, scenario: compiled }) });
+        setReplay(replayPayload);
       }
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Unable to run verification.'); }
     finally { setBusy(false); }
+  }
+
+  async function generatePassport() {
+    if (!beforeRun || !runResult || !compiled || runResult.status !== 'passed') return;
+    setBusy(true); setStatus('Generating the signed Passport in the local runner…');
+    try {
+      const payload = await requestJson<{ passport: RuntimePassport }>(`${runnerUrl.replace(/\/$/, '')}/passport`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun: runResult, scenario: compiled }) });
+      setPassport(payload.passport); setStatus(`Passport ready: ${payload.passport.passportHash}`);
+    } catch (error) { setStatus(error instanceof Error ? error.message : 'Passport generation failed.'); }
+    finally { setBusy(false); }
+  }
+
+  async function publishPassport() {
+    if (!passport || !registry) return;
+    setBusy(true); setStatus('Publishing Passport through the local runner…');
+    try {
+      const payload = await requestJson<{ passport: RuntimePassport }>(`${runnerUrl.replace(/\/$/, '')}/passport/publish`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ passport, registry }) });
+      setPassport(payload.passport); setStatus(`Passport published: ${payload.passport.onChain?.transactionHash ?? 'transaction confirmed'}`);
+    } catch (error) { setStatus(error instanceof Error ? error.message : 'Passport publish failed.'); }
+    finally { setBusy(false); }
+  }
+
+  function downloadPassport() {
+    if (!passport) return;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([JSON.stringify(passport, null, 2)], { type: 'application/json' }));
+    link.download = `${passport.passportId}.json`; link.click(); URL.revokeObjectURL(link.href);
   }
 
   return <main className="project-workspace">
@@ -120,5 +166,6 @@ export function ProjectOnboarding() {
     {runResult ? <section className="panel live-run-panel"><div className="panel-heading"><div><p className="eyebrow">STEP 5 / LIVE VERIFICATION</p><h2>{runResult.status === 'passed' ? 'Journey passed' : 'Journey needs attention'}</h2><p className="panel-subtitle">{runResult.network.name} · {runResult.summary.passed} passed · {runResult.summary.failed} failed · {runResult.summary.skipped} skipped</p></div><span className={`status-badge ${runResult.status}`}>{runResult.status}</span></div><div className="live-run-grid"><div className="runtime-flow-canvas"><RuntimeFlow result={runResult} journeyId="" view="technical" selectedNodeId={selectedNode} selectedFindingId="" onSelect={(nodeId) => setSelectedNode(nodeId)} /></div><div className="panel live-inspector"><p className="eyebrow">INSPECTOR</p>{runResult.nodes.filter((node) => node.id === selectedNode)[0] ? <><h3>{selectedNode}</h3><span className={`status-badge ${runResult.nodes.find((node) => node.id === selectedNode)?.status}`}>{runResult.nodes.find((node) => node.id === selectedNode)?.status}</span><dl><dt>Duration</dt><dd>{runResult.nodes.find((node) => node.id === selectedNode)?.durationMs}ms</dd><dt>Source</dt><dd>{runResult.nodes.find((node) => node.id === selectedNode)?.source?.file ?? 'Source mapping unavailable'}</dd></dl>{runResult.nodes.find((node) => node.id === selectedNode)?.error ? <div className="failure"><strong>Execution error</strong><p>{runResult.nodes.find((node) => node.id === selectedNode)?.error?.message}</p></div> : null}</> : <p className="empty-copy">Select a node in the live trace.</p>}</div></div></section> : null}
     {diagnosis ? <section className="panel intelligence-panel"><div className="panel-heading"><div><p className="eyebrow">STEP 6 / RUNTIME INTELLIGENCE</p><h2>Evidence-bound diagnosis</h2><p className="panel-subtitle">The suggestion is constrained to values present in this run; it is not an automatic code change.</p></div><span className="status-badge skipped">AI SUGGESTED</span></div><div className="diagnosis-grid"><div><span className="diagnosis-label">Root cause</span><p>{diagnosis.rootCause}</p></div><div><span className="diagnosis-label">Evidence</span><ul className="evidence-list">{diagnosis.evidence.map((item) => <li key={`${item.nodeId}-${item.field}`}><code>{item.nodeId}.{item.field}</code> = {item.value}</li>)}</ul></div><div><span className="diagnosis-label">Suggested fix</span><p>{diagnosis.suggestedFix}</p></div><div><span className="diagnosis-label">Follow-up tests</span><ul className="evidence-list">{diagnosis.followUpTests.map((item) => <li key={item}>{item}</li>)}</ul></div></div>{remediation ? <div className="remediation-note"><strong>Suggested remediation · {Math.round(remediation.confidence * 100)}%</strong><p>{remediation.remediation}</p><code>{remediation.suggestedDiff}</code></div> : null}</section> : null}
     {replay ? <section className="replay-proof live-replay"><div><p className="eyebrow">STEP 7 / VERIFIED REPLAY</p><h2>Before/after proof confirmed</h2><p>The same compiled scenario changed from failed to passed under the same deterministic verification contract.</p></div><div className="replay-proof-grid"><span>Before<strong>{replay.beforeRunId}</strong></span><span>After<strong>{replay.afterRunId}</strong></span><span>Recovered<strong>{replay.diffSummary.recoveredJourneys.length} journey</strong></span><span className="success-text">✓ Runtime Verified</span></div></section> : null}
+    {replay?.status === 'runtime-verified' ? <section className="panel passport-panel"><div className="panel-heading"><div><p className="eyebrow">STEP 8 / TRUST PASSPORT</p><h2>{passport ? 'Runtime Passport ready' : 'Create a Runtime Passport'}</h2><p className="panel-subtitle">Signing stays in the local runner. The browser receives only the verifiable public Passport.</p></div><span className="status-badge passed">ELIGIBLE</span></div>{passport ? <><p><code>{passport.passportHash}</code></p><div className="builder-actions"><button className="secondary-button" type="button" onClick={downloadPassport}>Download Passport</button><input value={registry} onChange={(event) => setRegistry(event.target.value)} placeholder="Local registry address (0x…)" /><button className="primary-button" type="button" onClick={() => void publishPassport()} disabled={busy || !registry}>Publish locally</button></div>{passport.onChain ? <p className="runner-status">Published on chain {passport.onChain.chainId}: <code>{passport.onChain.transactionHash}</code></p> : null}</> : <button className="primary-button" type="button" onClick={() => void generatePassport()} disabled={busy}>Generate Passport</button>}</section> : null}
   </main>;
 }
