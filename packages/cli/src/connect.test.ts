@@ -92,6 +92,7 @@ test('local runner enforces origin allowlist and validates structured requests',
     const allowed = await fetch(`${runner.url}/health`, { headers: { origin: 'https://app.example.test' } });
     assert.equal(allowed.status, 200);
     assert.equal(allowed.headers.get('access-control-allow-origin'), 'https://app.example.test');
+    assert.equal(allowed.headers.get('access-control-allow-private-network'), 'true');
 
     const unknown = await fetch(`${runner.url}/health`, { headers: { origin: 'https://evil.example.test' } });
     assert.equal(unknown.status, 403);

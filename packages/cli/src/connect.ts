@@ -21,7 +21,8 @@ function json(response: import('node:http').ServerResponse, status: number, body
   const headers: Record<string, string> = {
     'content-type': 'application/json; charset=utf-8',
     'access-control-allow-methods': 'GET, POST, OPTIONS',
-    'access-control-allow-headers': 'content-type'
+    'access-control-allow-headers': 'content-type',
+    'access-control-allow-private-network': 'true'
   };
   if (origin) headers['access-control-allow-origin'] = origin;
   response.writeHead(status, {
