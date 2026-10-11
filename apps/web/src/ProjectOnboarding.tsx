@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { ProjectSnapshot } from '@crucible/core';
+import type { RunResult, Scenario } from '@crucible/core';
+import { RuntimeFlow } from './RuntimeFlow.js';
 
 type SavedProject = { id: string; name: string; runnerUrl: string; connectedAt?: string };
 const STORAGE_KEY = 'crucible.projects.v1';
@@ -17,10 +19,28 @@ export function ProjectOnboarding() {
   const [selectedContract, setSelectedContract] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [contract, setContract] = useState('');
+  const [call, setCall] = useState('');
+  const [assertion, setAssertion] = useState('');
+  const [callArgs, setCallArgs] = useState('');
+  const [assertionArgs, setAssertionArgs] = useState('');
+  const [expected, setExpected] = useState('');
+  const [sourceFile, setSourceFile] = useState('');
+  const [compiled, setCompiled] = useState<Scenario | null>(null);
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [selectedNode, setSelectedNode] = useState('');
 
   const activeContract = useMemo(() => snapshot?.contracts.find((contract) => contract.name === selectedContract) ?? snapshot?.contracts[0], [selectedContract, snapshot]);
 
   useEffect(() => { if (!selectedContract && snapshot?.contracts[0]) setSelectedContract(snapshot.contracts[0].name); }, [selectedContract, snapshot]);
+  useEffect(() => {
+    const selected = snapshot?.contracts.find((item) => item.name === contract) ?? snapshot?.contracts[0];
+    if (selected) {
+      setContract(selected.name);
+      setCall(selected.functions.find((fn) => fn.stateMutability !== 'view' && fn.stateMutability !== 'pure')?.name ?? selected.functions[0]?.name ?? '');
+      setAssertion(selected.functions.find((fn) => fn.stateMutability === 'view' || fn.stateMutability === 'pure')?.name ?? '');
+    }
+  }, [snapshot, contract]);
   function save(next: SavedProject[]) { setProjects(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); }
 
   async function connect(url = runnerUrl, projectName = name) {
@@ -39,6 +59,29 @@ export function ProjectOnboarding() {
     finally { setBusy(false); }
   }
 
+  async function compile() {
+    setBusy(true); setStatus('Compiling the journey against the detected ABI…');
+    try {
+      const response = await fetch(`${runnerUrl.replace(/\/$/, '')}/journeys/compile`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: name.trim() || 'manual-journey', contract, call, assertion, callArgs: callArgs ? callArgs.split(',').map((item) => item.trim()) : [], assertionArgs: assertionArgs ? assertionArgs.split(',').map((item) => item.trim()) : [], expected: expected || undefined, source: sourceFile ? { file: sourceFile } : undefined }) });
+      const payload = await response.json() as { scenario?: Scenario; error?: string };
+      if (!response.ok || !payload.scenario) throw new Error(payload.error ?? `Journey compiler returned ${response.status}.`);
+      setCompiled(payload.scenario); setRunResult(null); setStatus('Journey compiled and validated.');
+    } catch (error) { setStatus(error instanceof Error ? error.message : 'Unable to compile journey.'); }
+    finally { setBusy(false); }
+  }
+
+  async function run() {
+    if (!compiled) return;
+    setBusy(true); setStatus('Running local verification on a fresh Anvil chain…');
+    try {
+      const response = await fetch(`${runnerUrl.replace(/\/$/, '')}/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'local', scenario: compiled }) });
+      const payload = await response.json() as { result?: RunResult; error?: string };
+      if (!response.ok || !payload.result) throw new Error(payload.error ?? `Runner returned ${response.status}.`);
+      setRunResult(payload.result); setSelectedNode(payload.result.nodes[0]?.id ?? ''); setStatus(payload.result.status === 'passed' ? 'Verification passed.' : 'Verification finished with findings.');
+    } catch (error) { setStatus(error instanceof Error ? error.message : 'Unable to run verification.'); }
+    finally { setBusy(false); }
+  }
+
   return <main className="project-workspace">
     <div className="project-hero"><div><p className="eyebrow">CRUCIBLE / PROJECTS</p><h1>Bring a repository into Crucible</h1><p className="lede">Connect the local runner that can inspect your Foundry repository. Crucible never guesses a contract or runs arbitrary commands from this page.</p></div><a className="secondary-button" href="/">Open demo viewer</a></div>
     <section className="onboarding-grid">
@@ -47,5 +90,7 @@ export function ProjectOnboarding() {
     </section>
     {snapshot ? <section className="panel detection-panel"><div className="panel-heading"><div><p className="eyebrow">STEP 2 / REPOSITORY DETECTION</p><h2>{snapshot.project.name}</h2><p className="panel-subtitle"><code>{snapshot.project.root}</code></p></div><span className={`status-badge ${snapshot.detection.status === 'SUPPORTED' ? 'passed' : snapshot.detection.status === 'UNSUPPORTED_TOOLCHAIN' ? 'failed' : 'skipped'}`}>{snapshot.detection.status.replaceAll('_', ' ')}</span></div><div className="detection-grid"><div><span>Toolchain</span><strong>{snapshot.detection.toolchain.foundry.detected ? 'Foundry detected' : 'Foundry not detected'}</strong></div><div><span>Artifacts</span><strong>{snapshot.detection.artifacts.candidates.length} candidates</strong></div><div><span>Scenarios</span><strong>{snapshot.detection.scenarios.candidates.length} found</strong></div><div><span>Next step</span><strong>{snapshot.detection.nextSteps[0]}</strong></div></div><p className="panel-subtitle">{snapshot.detection.summary}</p></section> : null}
     {snapshot ? <section className="panel contract-panel"><div className="panel-heading"><div><p className="eyebrow">STEP 3 / CONTRACT EXPLORER</p><h2>Compiled application contracts</h2><p className="panel-subtitle">Only functions read from compiled artifacts are shown.</p></div></div>{snapshot.contracts.length ? <div className="contract-explorer"><div className="contract-list">{snapshot.contracts.map((contract) => <button className={`contract-item ${activeContract?.name === contract.name ? 'selected' : ''}`} key={contract.name} type="button" onClick={() => setSelectedContract(contract.name)}><strong>{contract.name}</strong><small>{contract.functions.length} functions · {contract.selectionReason}</small></button>)}</div><div className="abi-list">{activeContract ? <>{<h3>{activeContract.name}</h3>}{activeContract.functions.map((fn) => <div className="abi-row" key={`${fn.name}-${fn.stateMutability}`}><strong>{fn.name}</strong><span>{fn.stateMutability}</span><small>({fn.inputs.map((input) => `${input.name}: ${input.type}`).join(', ') || 'no inputs'})</small></div>)}</> : null}</div></div> : <div className="empty-state"><strong>Contract explorer is waiting for compiled artifacts.</strong><p>{snapshot.contractExplorer.reason ?? 'Run forge build, then reconnect the project.'}</p></div>}</section> : null}
+    {snapshot?.contracts.length ? <section className="panel journey-builder"><div className="panel-heading"><div><p className="eyebrow">STEP 4 / MANUAL JOURNEY BUILDER</p><h2>Describe the user journey</h2><p className="panel-subtitle">Choose one write action and one read assertion. Crucible compiles this into a validated scenario before it runs.</p></div><span className="status-badge skipped">LOCAL MODE</span></div><div className="builder-grid"><label>Contract<select value={contract} onChange={(event) => setContract(event.target.value)}>{snapshot.contracts.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label><label>Write function<select value={call} onChange={(event) => setCall(event.target.value)}>{activeContract?.functions.filter((fn) => fn.stateMutability !== 'view' && fn.stateMutability !== 'pure').map((fn) => <option key={fn.name} value={fn.name}>{fn.name}</option>)}</select></label><label>Read assertion<select value={assertion} onChange={(event) => setAssertion(event.target.value)}>{activeContract?.functions.filter((fn) => fn.stateMutability === 'view' || fn.stateMutability === 'pure').map((fn) => <option key={fn.name} value={fn.name}>{fn.name}</option>)}</select></label><label>Write args<input value={callArgs} onChange={(event) => setCallArgs(event.target.value)} placeholder="alice, 1" /></label><label>Assertion args<input value={assertionArgs} onChange={(event) => setAssertionArgs(event.target.value)} placeholder="0" /></label><label>Expected value<input value={expected} onChange={(event) => setExpected(event.target.value)} placeholder="optional" /></label><label className="source-field">Source file (optional)<input value={sourceFile} onChange={(event) => setSourceFile(event.target.value)} placeholder="src/MyContract.sol" /></label></div><div className="builder-actions"><button className="primary-button" type="button" onClick={() => void compile()} disabled={busy || !call || !assertion}>Compile journey</button>{compiled ? <button className="secondary-button" type="button" onClick={() => void run()} disabled={busy}>{busy ? 'Running…' : 'Run verification'}</button> : null}<span className="builder-note">{compiled ? `Validated scenario: ${compiled.name}` : 'No scenario compiled yet.'}</span></div></section> : null}
+    {runResult ? <section className="panel live-run-panel"><div className="panel-heading"><div><p className="eyebrow">STEP 5 / LIVE VERIFICATION</p><h2>{runResult.status === 'passed' ? 'Journey passed' : 'Journey needs attention'}</h2><p className="panel-subtitle">{runResult.network.name} · {runResult.summary.passed} passed · {runResult.summary.failed} failed · {runResult.summary.skipped} skipped</p></div><span className={`status-badge ${runResult.status}`}>{runResult.status}</span></div><div className="live-run-grid"><div className="runtime-flow-canvas"><RuntimeFlow result={runResult} journeyId="" view="technical" selectedNodeId={selectedNode} selectedFindingId="" onSelect={(nodeId) => setSelectedNode(nodeId)} /></div><div className="panel live-inspector"><p className="eyebrow">INSPECTOR</p>{runResult.nodes.filter((node) => node.id === selectedNode)[0] ? <><h3>{selectedNode}</h3><span className={`status-badge ${runResult.nodes.find((node) => node.id === selectedNode)?.status}`}>{runResult.nodes.find((node) => node.id === selectedNode)?.status}</span><dl><dt>Duration</dt><dd>{runResult.nodes.find((node) => node.id === selectedNode)?.durationMs}ms</dd><dt>Source</dt><dd>{runResult.nodes.find((node) => node.id === selectedNode)?.source?.file ?? 'Source mapping unavailable'}</dd></dl>{runResult.nodes.find((node) => node.id === selectedNode)?.error ? <div className="failure"><strong>Execution error</strong><p>{runResult.nodes.find((node) => node.id === selectedNode)?.error?.message}</p></div> : null}</> : <p className="empty-copy">Select a node in the live trace.</p>}</div></div></section> : null}
   </main>;
 }
