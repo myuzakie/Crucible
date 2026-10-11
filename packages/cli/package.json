@@ -4,7 +4,7 @@
   "version": "0.2.2",
   "type": "module",
   "bin": {
-    "crucible": "./dist/index.js"
+    "crucible": "dist/index.js"
   },
   "files": [
     "dist",
