@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   RuntimeEvidenceSchema,
   RuntimeFindingSchema,
+  RuntimeReplaySummarySchema,
   RuntimeRuleSchema,
   RuntimeVerificationSchema,
   isRuntimePassportEligible
@@ -90,4 +91,14 @@ test('Monad Passport requires all mandatory rules to pass', () => {
     ]
   });
   assert.equal(isRuntimePassportEligible(complete), true);
+});
+
+test('runtime replay summary only accepts the verified status', () => {
+  const summary = RuntimeReplaySummarySchema.parse({
+    status: 'runtime-verified', beforeRunId: 'before', afterRunId: 'after',
+    scenarioHash: 'scenario-hash', suiteVersion: '1.0.0', profile: 'monad-core', ruleSetHash: 'rules-hash',
+    diffSummary: { recoveredJourneys: ['auction'], failedBefore: 1, passedAfter: 3 }
+  });
+  assert.equal(summary.status, 'runtime-verified');
+  assert.equal(RuntimeReplaySummarySchema.safeParse({ ...summary, status: 'ai-suggested' }).success, false);
 });

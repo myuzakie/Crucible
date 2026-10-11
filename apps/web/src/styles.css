@@ -17,6 +17,7 @@ select { background: #211f1c; border: 1px solid #4a443b; border-radius: 8px; col
 .overview strong { font-size: 16px; }
 .status-text.passed { color: #8bd29b; }.status-text.failed { color: #ff806c; }
 .content-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .6fr); gap: 20px; margin-top: 24px; }
+.replay-proof { align-items: center; display: flex; gap: 24px; justify-content: space-between; margin-top: 20px; }.replay-proof h2 { margin-bottom: 8px; }.replay-proof p:not(.eyebrow) { color: #c1bbb0; font-size: 13px; margin: 0; }.replay-proof-grid { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(90px, 1fr)); }.replay-proof-grid div { display: grid; gap: 5px; }.replay-proof-grid span { color: #918b80; font-size: 11px; }.replay-proof-grid strong { font-size: 12px; overflow-wrap: anywhere; }
 .panel, .error-card, .state-card { background: #191816; border: 1px solid #34302b; border-radius: 16px; padding: 24px; }
 .state-card { color: #d7d0c4; margin-top: 24px; }
 .state-card p { color: #918b80; margin: 8px 0 0; }

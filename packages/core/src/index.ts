@@ -8,11 +8,13 @@ export {
   RuntimeFindingSchema,
   VerificationProfileSchema,
   RuntimeVerificationSchema,
+  RuntimeReplaySummarySchema,
   MONAD_CORE_RULE_IDS,
   VERIFICATION_PROFILES,
   isRuntimePassportEligible
 } from './runtime/index.js';
 export * from './runtime/rules.js';
+export * from './runtime/replay.js';
 export * from './network/monad.js';
 export * from './network/testnet.js';
 export * from './runner/index.js';
