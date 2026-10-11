@@ -157,6 +157,9 @@ export function App() {
   const findings = result ? runtimeFindings(result) : [];
   const journeys = result ? runtimeJourneys(result) : [];
   const selectedFinding = findings.find((finding) => finding.findingId === selectedFindingId) ?? findings[0];
+  const activeFixture = fixtures.find((item) => item.file === fixture);
+  const passedFindings = findings.filter((finding) => finding.status === 'passed').length;
+  const failedFindings = findings.filter((finding) => finding.status === 'failed').length;
 
   function startReplay() {
     if (!result?.nodes.length) return;
@@ -185,18 +188,30 @@ export function App() {
 
   return (
     <main className="shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">CRUCIBLE / EXECUTION REPORT</p>
-          <h1>Run viewer</h1>
-        </div>
-        <label className="fixture-picker">
-          Fixture
-          <select value={fixture} onChange={(event) => setFixture(event.target.value)}>
-            {fixtures.map((item) => <option key={item.file} value={item.file}>{item.label}</option>)}
-          </select>
-        </label>
-      </header>
+      <aside className="sidebar" aria-label="Crucible navigation">
+        <div className="brand-lockup"><div className="brand-mark">C</div><div><strong>CRUCIBLE</strong><span>Runtime observability</span></div></div>
+        <div className="sidebar-label">WORKSPACE</div>
+        <nav className="side-nav">
+          <a className="active" href="#overview"><span>◈</span>Overview</a>
+          <a href="#journey"><span>⌁</span>Journeys</a>
+          <a href="#evidence"><span>◌</span>Evidence</a>
+          <a href="#diagnosis"><span>✦</span>Remediation</a>
+        </nav>
+        <div className="sidebar-label">PROJECT</div>
+        <div className="project-card"><span className="project-dot" />Monad Runtime Demo<strong>{result?.runtimeVerification?.profile ?? 'fixture workspace'}</strong></div>
+        <div className="sidebar-spacer" />
+        <div className="sidebar-foot"><span className="status-dot" />Local fixture mode <small>No wallet required</small></div>
+      </aside>
+      <div className="workspace">
+        <header className="topbar">
+          <div className="page-context"><p className="eyebrow">WORKSPACE / RUNTIME VERIFICATION</p><h1>Execution report</h1><p className="lede">Prove how your dApp behaves on Monad before you ship it.</p></div>
+          <div className="topbar-actions"><button className="icon-button" type="button" aria-label="Keyboard shortcuts">⌘ /</button><span className="live-chip"><span />Fixture live</span><label className="fixture-picker"><span>Run fixture</span><select value={fixture} onChange={(event) => setFixture(event.target.value)}>{fixtures.map((item) => <option key={item.file} value={item.file}>{item.label}</option>)}</select></label></div>
+        </header>
+
+        <section className="hero-strip" id="overview">
+          <div><span className="hero-kicker">ACTIVE RUN</span><h2>{activeFixture?.label ?? 'Runtime fixture'}</h2><p>Deterministic evidence workspace · updated just now</p></div>
+          <div className="hero-actions"><span className={`run-badge ${result?.status ?? 'loading'}`}><span />{result?.status === 'passed' ? 'Ready to attest' : result?.status === 'failed' ? 'Action required' : 'Loading run'}</span><button className="quiet-button" type="button" onClick={() => window.location.reload()}>↻ Refresh</button></div>
+        </section>
 
       {error ? <section className="error-card" role="alert"><strong>Cannot render result</strong><p>{error}</p></section> : null}
       {!error && !result ? <section className="state-card" aria-live="polite">Loading result…</section> : null}
@@ -204,11 +219,10 @@ export function App() {
       {result && result.nodes.length > 0 ? (
         <>
           <section className="overview">
-            <div><span>Status</span><strong className={`status-text ${result.status}`}>{result.status}</strong></div>
-            <div><span>Scenario</span><strong>{result.scenario}</strong></div>
-            <div><span>Score</span><strong>{result.score}%</strong></div>
-            <div><span>Network</span><strong>{result.network.name} · {result.network.chainId}</strong></div>
-            <div><span>Finished</span><strong>{formatDate(result.finishedAt)}</strong></div>
+            <div className="metric-card"><span>Run status</span><strong className={`status-text ${result.status}`}>{result.status}</strong><small>{result.status === 'passed' ? 'All checks clear' : 'Review findings below'}</small></div>
+            <div className="metric-card"><span>Runtime score</span><strong>{result.score}%</strong><small>{result.nodes.length} execution steps</small></div>
+            <div className="metric-card"><span>Findings</span><strong>{failedFindings ? `${failedFindings} failed` : `${passedFindings} passed`}</strong><small>{findings.length ? 'Monad core suite' : 'No runtime findings'}</small></div>
+            <div className="metric-card"><span>Network</span><strong>{result.network.name}</strong><small>Chain {result.network.chainId} · {formatDate(result.finishedAt)}</small></div>
           </section>
           {result.verifiedReplay ? (
             <section className="replay-proof panel" aria-label="Verified replay">
@@ -222,10 +236,10 @@ export function App() {
               <div className="passport-meta"><span>Profile <strong>{result.runtimeVerification.profile}</strong></span><span>Suite <strong>{result.runtimeVerification.suiteVersion}</strong></span><span>Attestation <strong>Ready to publish</strong></span></div>
             </section>
           ) : null}
-          <section className="content-grid">
+          <section className="content-grid" id="journey">
             <div className="panel flow-panel">
               <div className="panel-heading">
-                <div><p className="eyebrow">EXECUTION FLOW</p><h2>Nodes</h2></div>
+                <div><p className="eyebrow">JOURNEY GRAPH</p><h2>What happened</h2><p className="panel-subtitle">Trace the user journey from action to runtime evidence.</p></div>
                 <div className="flow-actions"><span>{result.nodes.length} steps</span><button onClick={startReplay} disabled={replayIndex !== null}>{replayIndex === null ? 'Replay' : 'Replaying…'}</button></div>
               </div>
               {replayMessage ? <p className="replay-message" aria-live="polite">{replayMessage}</p> : null}
@@ -273,7 +287,7 @@ export function App() {
                 ))}
               </div> : null}
             </div>
-            <aside className="panel detail-panel">
+            <aside className="panel detail-panel" id="evidence">
               <p className="eyebrow">{selectedFinding ? 'RUNTIME FINDING INSPECTOR' : 'NODE DETAIL'}</p>
               {selectedFinding ? (
                 <>
@@ -299,7 +313,7 @@ export function App() {
             </aside>
           </section>
           {result.status === 'failed' ? (
-            <section className="panel diagnosis-panel" aria-live="polite">
+            <section className="panel diagnosis-panel" id="diagnosis" aria-live="polite">
               <div className="panel-heading">
                 <div><p className="eyebrow">AI-ASSISTED DEBUGGING</p><h2>Diagnosis</h2></div>
                 <div className="flow-actions">
@@ -319,6 +333,7 @@ export function App() {
           ) : null}
         </>
       ) : null}
+      </div>
     </main>
   );
 }
