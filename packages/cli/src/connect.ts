@@ -1,7 +1,11 @@
 import { createServer, type Server } from 'node:http';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 
-import { ScenarioSchema, compileJourney, inspectProject, runLocalTest, type ProjectSnapshot } from '@crucible/core';
+import { DiagnosisSchema, createOpenAICompatibleClient, diagnoseWithModel } from '@crucible/ai';
+import { remediateRuntimeFinding } from '@crucible/ai';
+import { ScenarioSchema, compileJourney, createVerifiedReplay, inspectProject, runLocalTest, withExecutionVerification, type ProjectSnapshot } from '@crucible/core';
+import { runMonadTestnetTest } from './testnet.js';
 
 export type RunnerOptions = { root: string; name?: string; host?: string; port?: number };
 export type RunnerHandle = { server: Server; url: string; snapshot: ProjectSnapshot; close: () => Promise<void> };
@@ -28,6 +32,24 @@ async function body(request: import('node:http').IncomingMessage): Promise<unkno
 function foundryOptions(root: string, snapshot: ProjectSnapshot) {
   const foundryRoot = snapshot.detection.toolchain.foundry.configPaths[0]?.split('/').slice(0, -1).join('/') || '.';
   return { foundryRoot: resolve(root, foundryRoot), artifactDir: 'out' };
+}
+
+function hash(value: unknown): string {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function fallbackDiagnosis(result: import('@crucible/core').RunResult) {
+  const failed = result.nodes.find((node) => node.status === 'failed') ?? result.nodes[0];
+  if (!failed) return undefined;
+  return DiagnosisSchema.parse({
+    runId: result.runId,
+    status: 'ready',
+    rootCause: failed.error?.message ?? `Node ${failed.id} did not complete successfully.`,
+    evidence: [{ nodeId: failed.id, field: failed.error?.message ? 'error.message' : 'status', value: failed.error?.message ?? failed.status }],
+    suggestedFix: failed.error?.kind === 'assertion' ? 'Update the journey input or contract implementation so the assertion matches the intended state.' : 'Inspect the failed node and its source mapping, then rerun the same journey after the change.',
+    confidence: 0.7,
+    followUpTests: [`Rerun ${result.scenario} and confirm node ${failed.id} passes.`]
+  });
 }
 
 export async function startLocalRunner(options: RunnerOptions): Promise<RunnerHandle> {
@@ -64,9 +86,47 @@ export async function startLocalRunner(options: RunnerOptions): Promise<RunnerHa
         const value = input as Record<string, unknown>;
         const scenario = ScenarioSchema.parse(value.scenario);
         const mode = value.mode === 'testnet' ? 'testnet' : 'local';
-        if (mode === 'testnet') return json(response, 501, { status: 'TESTNET_GUARD_REQUIRED', message: 'Testnet execution is exposed through the guarded CLI command in M21-B. Use crucible test --network monad-testnet --dry-run first.' });
-        const result = await runLocalTest({ scenario, ...foundryOptions(root, snapshot) });
+        if (mode === 'testnet') {
+          const confirmed = value.confirmed === true;
+          const testnet = await runMonadTestnetTest({ scenario, ...foundryOptions(root, snapshot), confirmed, dryRun: !confirmed });
+          return json(response, testnet.runResult ? 200 : 409, { mode, ...testnet, ...(testnet.runResult ? { result: withExecutionVerification(testnet.runResult) } : {}) });
+        }
+        const result = withExecutionVerification(await runLocalTest({ scenario, ...foundryOptions(root, snapshot) }));
         return json(response, 200, { mode, result });
+      }
+      if (path === '/diagnose') {
+        const value = input as Record<string, unknown>;
+        const result = value.runResult as import('@crucible/core').RunResult;
+        const scenario = value.scenario;
+        const apiKey = process.env.AI_API_KEY;
+        const client = apiKey ? createOpenAICompatibleClient({ apiKey, endpoint: process.env.AI_API_URL ?? 'https://api.openai.com/v1/chat/completions', model: process.env.AI_MODEL ?? 'gpt-4o-mini' }) : undefined;
+        const diagnosis = await diagnoseWithModel({ runResult: result, scenario, source: typeof value.source === 'string' ? value.source : undefined }, { client, fallback: fallbackDiagnosis(result) });
+        return json(response, 200, diagnosis);
+      }
+      if (path === '/remediate') {
+        const value = input as Record<string, unknown>;
+        const finding = value.finding as import('@crucible/core').RuntimeFinding;
+        const scenario = value.scenario;
+        const fallback = {
+          status: 'ai-suggested',
+          findingId: finding.findingId,
+          ruleId: finding.ruleId,
+          explanation: finding.summary,
+          rootCause: finding.userImpact ?? finding.summary,
+          remediation: 'Review the failing evidence and update the scenario or contract logic before rerunning.',
+          suggestedDiff: 'No automatic source change was applied. Use the source mapping and evidence to make the change intentionally.',
+          followUpTests: [`Rerun the ${finding.journeyId} journey and verify ${finding.ruleId} passes.`],
+          confidence: 0.65
+        };
+        const result = await remediateRuntimeFinding({ finding, scenario }, { fallback });
+        return json(response, 200, result);
+      }
+      if (path === '/replay') {
+        const value = input as Record<string, unknown>;
+        const beforeRun = value.beforeRun as import('@crucible/core').RunResult;
+        const afterRun = value.afterRun as import('@crucible/core').RunResult;
+        const replay = createVerifiedReplay({ beforeRun, afterRun, scenarioHash: hash(value.scenario), ruleSetHash: hash(afterRun.runtimeVerification?.findings.map((finding) => finding.ruleId).sort()) });
+        return json(response, 200, replay);
       }
       return json(response, 404, { error: 'Not found' });
     } catch (error) {
