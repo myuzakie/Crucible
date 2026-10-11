@@ -62,3 +62,13 @@ test('ERC-721 result fixture passes RunResult schema', () => {
   const result = RunResultSchema.parse(readJson('fixtures/result/erc721-happy.json'));
   assert.equal(result.scenario, 'collectible-happy-path');
 });
+
+test('mint-nft expanded scenario keeps Mint NFT business metadata', () => {
+  const scenario = ScenarioSchema.parse(readJson('examples/monad-erc721-demo/scenarios/mint-nft.json'));
+  assert.equal(scenario.metadata?.businessFlow, 'mint NFT');
+  assert.equal(scenario.metadata?.label, 'Mint NFT');
+  assert.deepEqual(executionOrder(scenario.nodes), ['deploy', 'mint', 'owner']);
+  const owner = scenario.nodes.find((node) => node.id === 'owner');
+  assert.equal(owner?.type, 'assert');
+  if (owner?.type === 'assert') assert.equal(owner.check.fn, 'ownerOf');
+});

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "0.1",
+  "businessFlow": "mint NFT",
+  "name": "mint-nft",
+  "network": "local",
+  "contract": "Collectible",
+  "actors": {
+    "deployer": "env:DEPLOYER_PRIVATE_KEY",
+    "alice": "env:ALICE_PRIVATE_KEY"
+  },
+  "minter": "deployer",
+  "recipient": "alice",
+  "tokenId": "0"
+}
