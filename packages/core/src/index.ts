@@ -1,7 +1,17 @@
 export const CORE_VERSION = '0.1.0';
 
 export * from './schema/index.js';
-export * from './runtime/index.js';
+export {
+  RuntimeRuleIdSchema,
+  RuntimeRuleSchema,
+  RuntimeEvidenceSchema,
+  RuntimeFindingSchema,
+  VerificationProfileSchema,
+  RuntimeVerificationSchema,
+  MONAD_CORE_RULE_IDS,
+  VERIFICATION_PROFILES,
+  isRuntimePassportEligible
+} from './runtime/index.js';
 export * from './runtime/rules.js';
 export * from './network/monad.js';
 export * from './network/testnet.js';

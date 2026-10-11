@@ -1,15 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { validateDiagnosisForResult, type Diagnosis } from '@crucible/ai';
-import { replaySequence, validateResult, type RunResult } from './viewer.js';
+import { findingsForJourney, replaySequence, runtimeFindings, runtimeJourneys, validateResult, type RunResult } from './viewer.js';
 
 const fixtures = [
   { label: 'Buggy mint', file: '/results/buggy-mint.json' },
   { label: 'Happy path', file: '/results/happy-path.json' },
   { label: 'ERC-721 mint', file: '/results/erc721-happy.json' },
   { label: 'Skipped node', file: '/results/skipped.json' },
+  { label: 'Monad runtime vulnerable', file: '/results/monad-runtime-vulnerable.json' },
+  { label: 'Monad runtime fixed', file: '/results/monad-runtime-fixed.json' },
   { label: 'Malformed', file: '/results/malformed.json' }
 ];
+
+const journeyLabels: Record<string, string> = {
+  'new-user-purchase': 'New User Purchase',
+  settlement: 'Settlement',
+  auction: 'Auction'
+};
+
+function journeyLabel(id: string) {
+  return journeyLabels[id] ?? id.replaceAll('-', ' ');
+}
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString();
@@ -22,6 +34,9 @@ export function App() {
   const [selectedId, setSelectedId] = useState('');
   const [replayIndex, setReplayIndex] = useState<number | null>(null);
   const [replayMessage, setReplayMessage] = useState('');
+  const [graphView, setGraphView] = useState<'business' | 'technical' | 'runtime'>('business');
+  const [selectedJourney, setSelectedJourney] = useState('');
+  const [selectedFindingId, setSelectedFindingId] = useState('');
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [diagnosisError, setDiagnosisError] = useState('');
   const [diagnosisSource, setDiagnosisSource] = useState<'live' | 'fallback' | null>(null);
@@ -33,6 +48,9 @@ export function App() {
     setSelectedId('');
     setReplayIndex(null);
     setReplayMessage('');
+    setGraphView('business');
+    setSelectedJourney('');
+    setSelectedFindingId('');
     setDiagnosis(null);
     setDiagnosisError('');
     setDiagnosisSource(null);
@@ -45,6 +63,8 @@ export function App() {
         const parsed = validateResult(value);
         setResult(parsed);
         setSelectedId(parsed.nodes[0]?.id ?? '');
+        setSelectedJourney(runtimeJourneys(parsed)[0] ?? '');
+        setSelectedFindingId(runtimeFindings(parsed)[0]?.findingId ?? '');
       })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === 'AbortError') return;
@@ -134,6 +154,9 @@ export function App() {
     () => result?.nodes.find((node) => node.id === selectedId) ?? result?.nodes[0],
     [result, selectedId]
   );
+  const findings = result ? runtimeFindings(result) : [];
+  const journeys = result ? runtimeJourneys(result) : [];
+  const selectedFinding = findings.find((finding) => finding.findingId === selectedFindingId) ?? findings[0];
 
   function startReplay() {
     if (!result?.nodes.length) return;
@@ -194,7 +217,38 @@ export function App() {
                 <div className="flow-actions"><span>{result.nodes.length} steps</span><button onClick={startReplay} disabled={replayIndex !== null}>{replayIndex === null ? 'Replay' : 'Replaying…'}</button></div>
               </div>
               {replayMessage ? <p className="replay-message" aria-live="polite">{replayMessage}</p> : null}
-              <div className="flow">
+              {findings.length > 0 ? (
+                <div className="view-tabs" role="tablist" aria-label="Graph view">
+                  <button className={graphView === 'business' ? 'active' : ''} onClick={() => setGraphView('business')}>Business View</button>
+                  <button className={graphView === 'technical' ? 'active' : ''} onClick={() => setGraphView('technical')}>Technical View</button>
+                  <button className={graphView === 'runtime' ? 'active' : ''} onClick={() => setGraphView('runtime')}>Runtime / Evidence</button>
+                </div>
+              ) : null}
+              {graphView === 'business' && findings.length > 0 ? (
+                <div className="journey-layout">
+                  <nav className="journey-list" aria-label="Business journeys">
+                    {journeys.map((journey) => {
+                      const journeyFindings = findingsForJourney(result, journey);
+                      const failed = journeyFindings.some((finding) => finding.status === 'failed');
+                      return <button key={journey} className={selectedJourney === journey ? 'selected' : ''} onClick={() => { setSelectedJourney(journey); setSelectedFindingId(journeyFindings[0]?.findingId ?? ''); }}><span>{journeyLabel(journey)}</span><strong className={failed ? 'failed' : 'passed'}>{failed ? 'FAIL' : 'PASS'}</strong></button>;
+                    })}
+                  </nav>
+                  <div className="business-flow">
+                    {(selectedJourney ? findingsForJourney(result, selectedJourney) : findings).map((finding, index, items) => (
+                      <div className="business-step" key={finding.findingId}>
+                        <button className={`business-node ${finding.status} ${selectedFinding?.findingId === finding.findingId ? 'selected' : ''}`} onClick={() => { setSelectedFindingId(finding.findingId); setSelectedId(finding.nodeId); }}><span>{index + 1}</span><strong>{journeyLabel(finding.journeyId)}</strong><small>{finding.nodeId} · {finding.status}</small></button>
+                        {index < items.length - 1 ? <div className="connector" /> : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {graphView === 'runtime' && findings.length > 0 ? (
+                <div className="runtime-findings">
+                  {findings.map((finding) => <button key={finding.findingId} className={`finding-row ${finding.status} ${selectedFinding?.findingId === finding.findingId ? 'selected' : ''}`} onClick={() => { setSelectedFindingId(finding.findingId); setSelectedId(finding.nodeId); }}><span className="finding-severity">{finding.status === 'failed' ? '!' : '✓'}</span><span><strong>{finding.ruleId}</strong><small>{journeyLabel(finding.journeyId)} · {finding.summary}</small></span></button>)}
+                </div>
+              ) : null}
+              {graphView === 'technical' || findings.length === 0 ? <div className="flow">
                 {result.nodes.map((node, index) => (
                   <div key={node.id} className="flow-item">
                     <button className={`node ${node.status} ${selected?.id === node.id ? 'selected' : ''}`} onClick={() => setSelectedId(node.id)} aria-label={`Select ${node.id} node`}>
@@ -205,11 +259,21 @@ export function App() {
                     {index < result.nodes.length - 1 ? <div className="connector" /> : null}
                   </div>
                 ))}
-              </div>
+              </div> : null}
             </div>
             <aside className="panel detail-panel">
-              <p className="eyebrow">NODE DETAIL</p>
-              {selected ? (
+              <p className="eyebrow">{selectedFinding ? 'RUNTIME FINDING INSPECTOR' : 'NODE DETAIL'}</p>
+              {selectedFinding ? (
+                <>
+                  <h2>{selectedFinding.userImpact ?? selectedFinding.summary}</h2>
+                  <div className={`detail-status ${selectedFinding.status}`}>{selectedFinding.status}</div>
+                  <div className="inspector-section"><span className="inspector-label">What happened</span><p>{selectedFinding.summary}</p><dl><dt>Rule</dt><dd>{selectedFinding.ruleId}</dd><dt>Journey</dt><dd>{journeyLabel(selectedFinding.journeyId)}</dd><dt>Node</dt><dd>{selectedFinding.nodeId}</dd></dl></div>
+                  <div className="inspector-section"><span className="inspector-label">Runtime evidence</span><ul className="evidence-list">{selectedFinding.evidence.map((evidence, index) => <li key={`${selectedFinding.findingId}-${index}`}><code>{evidence.type}</code> · {JSON.stringify(evidence.observed)}</li>)}</ul></div>
+                  <div className="inspector-section"><span className="inspector-label">Monad rule</span><p>{selectedFinding.ruleId} requires the observed runtime behavior to match the expected condition.</p><a href="https://docs.monad.xyz/architecture/consensus" target="_blank" rel="noreferrer">Open Monad documentation ↗</a></div>
+                  <div className="inspector-section"><span className="inspector-label">Suggested remediation</span><p>{selectedFinding.status === 'failed' ? 'Review the journey timing/assurance guard and replay the same scenario after the change.' : 'No remediation required for this finding.'}</p></div>
+                  {selected ? <div className="inspector-section technical"><span className="inspector-label">Source / technical details</span><p>Node {selected.id} · {selected.durationMs}ms · {selected.txHash ?? 'fixture evidence'}</p></div> : null}
+                </>
+              ) : selected ? (
                 <>
                   <h2>{selected.id}</h2>
                   <div className={`detail-status ${selected.status}`}>{selected.status}</div>
