@@ -72,6 +72,17 @@ test('onboarding reports MISSING_SCENARIO without inventing deploy steps', async
   }
 });
 
+test('missing artifacts stay a single failure state without a result path', async () => {
+  const root = resolve('fixtures/capabilities/foundry-missing-artifact');
+  const result = await runOnboardingLocalTest({ root, autoInit: false });
+  assert.equal(result.status, 'MISSING_ARTIFACT');
+  assert.equal(result.resultPath, undefined);
+  assert.equal(result.runResult, undefined);
+  const output = formatOnboardingLocalResult(result);
+  assert.match(output, /MISSING_ARTIFACT/);
+  assert.doesNotMatch(output, /Cannot load RunResult|latest\.json|CRUCIBLE ERROR/);
+});
+
 test('onboarding refuses to guess among multiple Foundry projects', async () => {
   const root = mkdtempSync(join(tmpdir(), 'crucible-onboard-multi-'));
   try {
