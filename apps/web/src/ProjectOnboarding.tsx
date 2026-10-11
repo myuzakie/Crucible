@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { isRuntimePassportEligible, type ProjectSnapshot } from '@crucible/core';
+import type { ProjectSnapshot } from '@crucible/core';
 import type { RunResult, Scenario } from '@crucible/core';
 import type { Diagnosis, RuntimeRemediation } from '@crucible/ai';
 import type { RuntimeReplaySummary } from '@crucible/core';
@@ -171,7 +171,7 @@ export function ProjectOnboarding() {
 
   const passportEligible = replay?.status === 'runtime-verified'
     && runResult?.runtimeVerification?.profile === 'monad-core'
-    && isRuntimePassportEligible(runResult.runtimeVerification);
+    && ['MND-TIME-001', 'MND-FINALITY-001', 'MND-FUND-001'].every((ruleId) => runResult.runtimeVerification?.findings.some((finding) => finding.ruleId === ruleId && finding.status === 'passed'));
 
   return <main className="project-shell"><aside className="project-sidebar" aria-label="Project workspace navigation"><a className="project-brand" href="/" aria-label="Crucible home"><span className="project-brand-mark">C</span><span><strong>CRUCIBLE</strong><small>Runtime verification</small></span></a><div className="project-sidebar-label">WORKSPACE</div><nav className="project-nav"><a className="selected" href="#overview"><LayoutDashboard size={16} aria-hidden="true" />Overview</a><a href="#journey-builder"><Play size={16} aria-hidden="true" />Journeys</a><a href="#contracts"><Box size={16} aria-hidden="true" />Contracts</a><a href="#live-run"><Activity size={16} aria-hidden="true" />Runs</a><a href="#passport"><ShieldCheck size={16} aria-hidden="true" />Passport</a></nav><div className="project-sidebar-footer"><a href="?debug=1"><BugIcon />Demo fixtures</a><a href="https://docs.monad.xyz" target="_blank" rel="noreferrer"><CircleHelp size={14} aria-hidden="true" />Monad docs <ExternalLink size={11} aria-hidden="true" /></a></div></aside><div className="project-main"><div className="project-hero" id="overview"><div><p className="eyebrow">CRUCIBLE / PROJECT WORKSPACE</p><h1>Connect your project to begin</h1><p className="lede">Crucible inspects your repository locally, discovers its contracts, and turns a real user journey into evidence you can review.</p></div><a className="secondary-button" href="?debug=1"><BugIcon />Try demo fixtures</a></div>
     <section className="onboarding-grid">
