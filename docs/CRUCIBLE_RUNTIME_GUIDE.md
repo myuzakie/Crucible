@@ -32,15 +32,16 @@ M21-A menambahkan project workspace untuk repository lokal. Web tetap menjadi
 control plane; filesystem dan detector berjalan di local runner yang sengaja
 di-scope ke satu root repository.
 
-1. Jalankan runner dari root Crucible dengan path repository target:
+1. Jalankan public runner command dari root repository target:
 
    ```bash
-   pnpm crucible connect --root /path/to/your/foundry-repository --port 8787
+   pnpm dlx @ohmuzakie/crucible-cli@latest connect --root .
    ```
 
-2. Jalankan Web, lalu buka `http://127.0.0.1:5173/?project=1`.
-3. Isi nama project dan URL `http://127.0.0.1:8787`, lalu klik **Connect &
-   detect repository**.
+2. Jalankan Web, lalu buka halaman Projects.
+3. URL runner default adalah `http://127.0.0.1:8787`; gunakan **Advanced
+   settings** hanya jika runner memakai port atau host lain.
+4. Isi nama project, lalu klik **Connect & detect repository**.
 4. Baca status toolchain, jumlah artifact, scenario, dan next step pada panel
    **Repository detection**.
 5. Jika artifact sudah ada, pilih contract pada **Contract explorer** untuk
