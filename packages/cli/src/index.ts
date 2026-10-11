@@ -52,7 +52,7 @@ const USAGE_LINES = [
   '  crucible test --network monad-testnet --dry-run [--scenario path] [--root path] [--foundry-root path]',
   '  crucible test --network monad-testnet --confirm-testnet [--scenario path] [--root path] [--foundry-root path] [--out path]',
   '  crucible scenario create [--root path] [--foundry-root path] [--contract name] [--call fn] [--assert fn] [--yes]',
-  '  crucible web [--result result.json] [--root path] [--port 5173]',
+  '  crucible web [--result result.json] [--scenario scenario.json] [--certificate certificate.json] [--root path] [--port 5173]',
   '  crucible validate <scenario-or-template.json>',
   '  crucible run <scenario.json> --network local [--foundry-root path] [--rpc url] [--out result.json]',
   '  crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
@@ -262,9 +262,41 @@ try {
     const resultPath = rest.includes('--result')
       ? flag(rest, '--result')
       : resolve(root, 'crucible', 'results', 'latest.json');
-    const port = Number(flag(rest, '--port', '5173'));
-    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid --port. Use a number between 0 and 65535.');
-    const viewer = await startWebViewer({ resultPath, port });
+    const port = rest.includes('--port') ? Number(flag(rest, '--port')) : undefined;
+    if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535)) {
+      throw new Error('Invalid --port. Use a number between 0 and 65535.');
+    }
+    const result = RunResultSchema.parse(await loadJson(resultPath));
+    const config = await loadCrucibleConfig(root);
+    const scenarioCandidates = [
+      rest.includes('--scenario') ? resolve(root, flag(rest, '--scenario')) : '',
+      config?.scenario ? resolve(root, config.scenario) : '',
+      resolve(root, 'scenarios', `${result.scenario}.json`)
+    ].filter(Boolean);
+    let scenario: Scenario | undefined;
+    for (const candidate of scenarioCandidates) {
+      try {
+        scenario = await loadScenario(candidate);
+        break;
+      } catch {
+        // The viewer remains useful when only a RunResult is available.
+      }
+    }
+    const certificateCandidates = [
+      rest.includes('--certificate') ? resolve(root, flag(rest, '--certificate')) : '',
+      resolve(root, 'crucible', 'certificate.json'),
+      resolve(root, 'certificate.json')
+    ].filter(Boolean);
+    let certificate;
+    for (const candidate of certificateCandidates) {
+      try {
+        certificate = verifyCertificate(await loadJson(candidate));
+        break;
+      } catch {
+        // Certificate is optional; invalid/missing reports must not block the result viewer.
+      }
+    }
+    const viewer = await startWebViewer({ resultPath, port, scenario, certificate });
     printUrl(viewer.url, resultPath);
     const stop = async () => {
       await viewer.close();

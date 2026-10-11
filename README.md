@@ -20,12 +20,18 @@ Untuk repository Foundry eksternal (target pertama: `monad-developers/scaffold-m
 
 ```bash
 cd /path/to/repo
+pnpm dlx @ohmuzakie/crucible-cli@latest
+```
+
+The interactive launcher is the recommended entry point. Select `Test`, `Scenario`, or `Web` with the keyboard. The equivalent scripted flow is:
+
+```bash
 pnpm dlx @ohmuzakie/crucible-cli@latest test
 ```
 
 - Satu command menjalankan discovery → preflight → build → fresh Anvil → scenario (jika siap).
 - `test` otomatis memakai local mode. `test --local` tetap didukung sebagai alias eksplisit.
-- Jika scenario belum ada, CLI menampilkan `CRUCIBLE NEEDS A BUSINESS SCENARIO` dan menyarankan `pnpm dlx @ohmuzakie/crucible-cli scenario create`.
+- Jika scenario belum ada, CLI menampilkan `CRUCIBLE NEEDS A BUSINESS SCENARIO` dan menyarankan `pnpm dlx @ohmuzakie/crucible-cli@latest scenario create`.
 - `doctor` dan `init` tetap tersedia untuk diagnosis atau konfigurasi manual, bukan langkah wajib happy path.
 - Wizard memprioritaskan contract aplikasi, melewati deployment script, test, library, dan interface, lalu meminta input ABI scalar sebagai teks/angka/yes-no. JSON hanya untuk advanced flags.
 - `crucible.config.json`, `foundry.toml`, `hardhat.config.*`, `out/`, `artifacts/`, dan `scenarios/` ditemukan otomatis. `--foundry-root`, `--scenario`, dan `--out` tetap tersedia untuk advanced/debug usage.
@@ -40,7 +46,9 @@ pnpm dlx @ohmuzakie/crucible-cli@latest test --verbose
 pnpm dlx @ohmuzakie/crucible-cli@latest web
 ```
 
-`web` otomatis membaca `crucible/results/latest.json`. Untuk hasil lain gunakan `web --result custom-result.json`.
+`web` adalah viewer read-only: command ini tidak menjalankan flow lagi. Viewer menjelaskan business scenario, menampilkan urutan `deploy → call → assert`, assertion error, dan result summary. Ia otomatis membaca `crucible/results/latest.json`, memilih port kosong jika `5173` sedang digunakan, dan memverifikasi/download certificate jika `certificate.json` atau `crucible/certificate.json` tersedia. Untuk hasil lain gunakan `web --result custom-result.json`.
+
+Catatan external repository: `pnpm crucible` hanya tersedia jika repository tersebut memiliki script atau dependency lokal bernama `crucible`. Pada repository yang memakai Yarn, gunakan launcher public `pnpm dlx @ohmuzakie/crucible-cli@latest` agar package manager target tidak menghalangi command sebelum Crucible dijalankan.
 
 Acceptance tiga repository publik (developer Crucible only):
 
