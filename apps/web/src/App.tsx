@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { validateDiagnosisForResult, type Diagnosis } from '@crucible/ai';
 import { findingsForJourney, replaySequence, runtimeFindings, runtimeJourneys, validateResult, type RunResult } from './viewer.js';
 import { RuntimeFlow } from './RuntimeFlow.js';
+import { ProjectOnboarding } from './ProjectOnboarding.js';
 
 const fixtures = [
   { label: 'Monad runtime vulnerable', file: '/results/monad-runtime-vulnerable.json' },
@@ -21,6 +22,7 @@ const journeyMeta: Record<string, { title: string; flow: string; description: st
 };
 
 const debugMode = new URLSearchParams(window.location.search).get('debug') === '1';
+const projectMode = new URLSearchParams(window.location.search).get('project') === '1';
 
 function journeyLabel(id: string) { return journeyMeta[id]?.title ?? id.replaceAll('-', ' '); }
 function formatDate(value: string) { return new Date(value).toLocaleString(); }
@@ -40,6 +42,7 @@ function whyMonad(ruleId: string) {
 function statusIcon(status: string) { return status === 'passed' ? '✓' : status === 'failed' ? '×' : '—'; }
 
 export function App() {
+  if (projectMode) return <><ProjectOnboarding /></>;
   const [fixture, setFixture] = useState(debugMode ? fixtures[2].file : fixtures[0].file);
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState('');
@@ -142,7 +145,7 @@ export function App() {
   }
 
   return <main className="shell">
-    <aside className="sidebar" aria-label="Crucible navigation"><div className="brand-lockup"><div className="brand-mark">C</div><div><strong>CRUCIBLE</strong><span>Runtime verification</span></div></div><nav className="side-nav"><a className="active" href="#journeys"><span>⌁</span>Journeys</a><a href="#issues"><span>!</span>Issues{failedCount ? <b>{failedCount}</b> : null}</a><a href="#replay"><span>↻</span>Replay</a><a href="#passport"><span>◇</span>Passport</a></nav><div className="sidebar-bottom"><div className="sidebar-label">PROJECT</div><div className="project-card"><span className="project-dot" />Monad Runtime Demo<strong>monad-core</strong></div><span className="environment-dot" />{environmentLabel}<small>Chain {result?.network.chainId ?? '—'}</small></div></aside>
+    <aside className="sidebar" aria-label="Crucible navigation"><div className="brand-lockup"><div className="brand-mark">C</div><div><strong>CRUCIBLE</strong><span>Runtime verification</span></div></div><nav className="side-nav"><a className="active" href="#journeys"><span>⌁</span>Journeys</a><a href="?project=1"><span>□</span>Projects</a><a href="#issues"><span>!</span>Issues{failedCount ? <b>{failedCount}</b> : null}</a><a href="#replay"><span>↻</span>Replay</a><a href="#passport"><span>◇</span>Passport</a></nav><div className="sidebar-bottom"><div className="sidebar-label">PROJECT</div><div className="project-card"><span className="project-dot" />Monad Runtime Demo<strong>monad-core</strong></div><span className="environment-dot" />{environmentLabel}<small>Chain {result?.network.chainId ?? '—'}</small></div></aside>
     <div className="workspace"><header className="topbar"><div><p className="eyebrow">CRUCIBLE / MONAD RUNTIME VERIFICATION</p><h1>Verify your Monad app</h1><p className="lede">Test real user journeys and see where they break before your users do.</p></div><div className="topbar-actions"><span className={`environment-badge ${result?.network.name === 'monad-fixture' ? 'fixture' : 'live'}`}><span />{environmentLabel}</span>{debugMode ? <label className="fixture-picker">Developer fixture<select value={fixture} onChange={(event) => setFixture(event.target.value)}>{fixtures.map((item) => <option key={item.file} value={item.file}>{item.label}</option>)}</select></label> : <a className="debug-link" href={`${window.location.pathname}?debug=1`}>Developer fixtures</a>}</div></header>
       {error ? <section className="error-card" role="alert"><strong>We couldn't load this verification result.</strong><p>The result does not match the Crucible RunResult schema.</p><details><summary>View technical details</summary><code>{error}</code></details><a className="secondary-button" href={window.location.pathname}>Try another run</a></section> : null}
       {!error && !result ? <section className="state-card" aria-live="polite">Loading verification…</section> : null}

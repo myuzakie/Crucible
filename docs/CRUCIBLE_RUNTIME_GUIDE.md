@@ -1,6 +1,6 @@
 # Crucible Runtime Verification Guide
 
-Versi dokumen: `0.2`  
+Versi dokumen: `0.3`  
 Profile demo: `monad-core`  
 Mode default: fixture/offline
 
@@ -25,6 +25,36 @@ Referensi resmi:
 Angka dan istilah di atas adalah konteks protokol. `MND-TIME-001`, `MND-FINALITY-001`, dan `MND-FUND-001` adalah rule Crucible yang memeriksa bukti journey; keduanya tidak boleh dibaca sebagai klaim bahwa fixture offline sedang mengakses network Monad.
 
 ## Cara memakai Web viewer
+
+### Onboarding repository nyata
+
+M21-A menambahkan project workspace untuk repository lokal. Web tetap menjadi
+control plane; filesystem dan detector berjalan di local runner yang sengaja
+di-scope ke satu root repository.
+
+1. Jalankan runner dari root Crucible dengan path repository target:
+
+   ```bash
+   pnpm crucible connect --root /path/to/your/foundry-repository --port 8787
+   ```
+
+2. Jalankan Web, lalu buka `http://127.0.0.1:5173/?project=1`.
+3. Isi nama project dan URL `http://127.0.0.1:8787`, lalu klik **Connect &
+   detect repository**.
+4. Baca status toolchain, jumlah artifact, scenario, dan next step pada panel
+   **Repository detection**.
+5. Jika artifact sudah ada, pilih contract pada **Contract explorer** untuk
+   melihat fungsi ABI yang benar-benar dibaca dari `out/`. Crucible tidak
+   mengarang contract atau fungsi.
+
+Endpoint runner M21-A bersifat read-only: `/health`, `/project`, dan
+`/contracts`. Runner tidak menerima shell command dari browser. Jika status
+menunjukkan `MISSING_ARTIFACT`, jalankan `forge build` di repository target,
+lalu reconnect. Jika `UNSUPPORTED_TOOLCHAIN`, repository belum memiliki
+`foundry.toml` yang didukung adapter saat ini.
+
+Fixture viewer tetap tersedia di `http://127.0.0.1:5173/` dan mode developer
+di `http://127.0.0.1:5173/?debug=1`.
 
 ```bash
 pnpm --filter @crucible/web dev --host 127.0.0.1
