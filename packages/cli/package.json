@@ -1,14 +1,15 @@
 {
   "name": "@ohmuzakie/crucible-cli",
   "private": false,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "bin": {
     "crucible": "./dist/index.js"
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "logo.txt"
   ],
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=bundle --sourcemap --outfile=dist/index.js",

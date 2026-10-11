@@ -14,34 +14,35 @@ pnpm build
 
 Tidak membutuhkan RPC, wallet, atau secret.
 
-## External repo onboarding (local)
+## External repo onboarding (user flow)
 
 Untuk repository Foundry eksternal (target pertama: `monad-developers/scaffold-monad-foundry`):
 
 ```bash
-pnpm crucible test --root /path/to/repo
+cd /path/to/repo
+pnpm dlx @ohmuzakie/crucible-cli@latest test
 ```
 
-- Satu command menjalankan detect → preflight → safe init → build → fresh Anvil → scenario (jika siap).
+- Satu command menjalankan discovery → preflight → build → fresh Anvil → scenario (jika siap).
 - `test` otomatis memakai local mode. `test --local` tetap didukung sebagai alias eksplisit.
-- Jika prasyarat kurang, command berhenti aman dengan status actionable (`MISSING_SCENARIO`, `MISSING_TOOL`, `UNSUPPORTED_TOOLCHAIN`, …) tanpa menebak deploy/call.
+- Jika scenario belum ada, CLI menampilkan `CRUCIBLE NEEDS A BUSINESS SCENARIO` dan menyarankan `pnpm dlx @ohmuzakie/crucible-cli scenario create`.
 - `doctor` dan `init` tetap tersedia untuk diagnosis atau konfigurasi manual, bukan langkah wajib happy path.
-- `init` menulis `crucible.config.json` minimal dan **tidak** membuat scenario hardcode `Token`. Jika scenario belum ada, statusnya `MISSING_SCENARIO` plus daftar contract yang terdeteksi.
-- Local test menjalankan `forge build`, spawn Anvil fresh (port ephemeral), eksekusi scenario, tulis RunResult, lalu kill Anvil — tanpa faucet, Monad RPC, atau private key user (akun Anvil default).
-- Artifact Foundry dimuat lewat adapter eksplisit (`--foundry-root` atau `crucible.config.json`); tidak menebak contract/network.
-- Template bisnis pertama: `mint NFT` (`fixtures/scenarios/mint-nft.json`) → expand ke `deploy -> mint -> ownerOf`.
+- Wizard memprioritaskan contract aplikasi, melewati deployment script, test, library, dan interface, lalu meminta input ABI scalar sebagai teks/angka/yes-no. JSON hanya untuk advanced flags.
+- `crucible.config.json`, `foundry.toml`, `hardhat.config.*`, `out/`, `artifacts/`, dan `scenarios/` ditemukan otomatis. `--foundry-root`, `--scenario`, dan `--out` tetap tersedia untuk advanced/debug usage.
+- Local test menjalankan `forge build`, spawn Anvil fresh (port ephemeral), eksekusi scenario, lalu menulis `crucible/results/latest.json` tanpa faucet, Monad RPC, atau private key user.
 
 Output default hanya menampilkan hal yang perlu dilakukan developer. Gunakan `--verbose` untuk path dan node detail, atau `--json` untuk automation:
 
 ```bash
-pnpm crucible test --root /path/to/repo
-pnpm crucible test --root /path/to/repo --verbose
-pnpm crucible test --root /path/to/repo --json > crucible-result.json
-pnpm crucible scenario create --root /path/to/repo
-pnpm crucible web --result /path/to/repo/result.json
+pnpm dlx @ohmuzakie/crucible-cli@latest test
+pnpm dlx @ohmuzakie/crucible-cli@latest scenario create
+pnpm dlx @ohmuzakie/crucible-cli@latest test --verbose
+pnpm dlx @ohmuzakie/crucible-cli@latest web
 ```
 
-Acceptance tiga repository publik:
+`web` otomatis membaca `crucible/results/latest.json`. Untuk hasil lain gunakan `web --result custom-result.json`.
+
+Acceptance tiga repository publik (developer Crucible only):
 
 ```bash
 pnpm test:external --json \
@@ -50,7 +51,7 @@ pnpm test:external --json \
   --target se-2-challenges=/path/to/se-2-challenges
 ```
 
-Untuk clean clone yang belum memiliki command `crucible`, jalankan dari repository Crucible dengan `--root` seperti contoh di atas. Setelah package CLI dipublikasikan, command yang sama dapat dijalankan langsung dari repository dApp.
+`pnpm test:external` memaketkan CLI dan menjalankan acceptance matrix dari repository Crucible. Command developer ini sengaja berbeda dari flow user `pnpm dlx` dan tidak perlu dijalankan dari repository target.
 
 Status `MISSING_SCENARIO` bukan error toolchain: Crucible sengaja berhenti karena business flow belum diketahui. Buat scenario yang sesuai contract, lalu ulangi command. Status `UNSUPPORTED_TOOLCHAIN`, `MISSING_TOOL`, `MISSING_ARTIFACT`, `BUILD_FAILED`, dan `SCENARIO_FAILED` selalu disertai langkah berikutnya.
 

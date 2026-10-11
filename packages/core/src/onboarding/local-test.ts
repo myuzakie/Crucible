@@ -1,5 +1,6 @@
-import { readFile, writeFile } from 'node:fs/promises';
-import { basename, dirname, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, dirname, resolve, join } from 'node:path';
 
 import { AdapterError } from '../adapters/index.js';
 import { detectCapabilities } from '../capabilities/detect.js';
@@ -63,11 +64,13 @@ function pickFoundryRoot(
   detectFoundryPaths: string[]
 ): string | undefined {
   if (explicit) return resolve(root, explicit);
-  if (config?.foundryRoot) return resolve(root, config.foundryRoot);
-  const first = detectFoundryPaths[0];
-  if (!first) return undefined;
-  const dir = dirname(first);
-  return resolve(root, dir === '.' ? '.' : dir);
+  if (config?.foundryRoot) {
+    const configured = resolve(root, config.foundryRoot);
+    if (existsSync(join(configured, 'foundry.toml'))) return configured;
+  }
+  const directories = [...new Set(detectFoundryPaths.map((path) => resolve(root, dirname(path))))];
+  if (directories.length !== 1) return undefined;
+  return directories[0];
 }
 
 function pickScenarioPath(
@@ -142,8 +145,15 @@ export async function runOnboardingLocalTest(
     return {
       status: 'UNSUPPORTED_TOOLCHAIN',
       root,
-      summary: 'Foundry root could not be resolved.',
-      nextSteps: ['Pass --foundry-root <path> or add foundry.toml, then re-run crucible test.'],
+      summary: report.toolchain.foundry.configPaths.length > 1
+        ? 'Multiple Foundry projects were detected; Crucible needs a project root.'
+        : 'Foundry root could not be resolved.',
+      nextSteps: report.toolchain.foundry.configPaths.length > 1
+        ? [
+            `Detected Foundry projects: ${report.toolchain.foundry.configPaths.join(', ')}.`,
+            'Run crucible test from the intended Foundry project, or pass --root <project> as an advanced option.'
+          ]
+        : ['Pass --foundry-root <path> or add foundry.toml, then re-run crucible test.'],
       detectedContracts
     };
   }
@@ -190,10 +200,11 @@ export async function runOnboardingLocalTest(
   }
 
   const artifactDir = options.artifactDir ?? config?.artifactDir ?? 'out';
-  const outPath = resolve(root, options.outPath ?? 'result.json');
+  const outPath = resolve(root, options.outPath ?? join('crucible', 'results', 'latest.json'));
 
   try {
     const runResult = await runLocalTest({ scenario, foundryRoot, artifactDir });
+    await mkdir(dirname(outPath), { recursive: true });
     await writeFile(outPath, `${JSON.stringify(runResult, null, 2)}\n`);
     const passed = runResult.status === 'passed';
     return {
@@ -205,7 +216,7 @@ export async function runOnboardingLocalTest(
       nextSteps: passed
         ? [
             `Result written to ${outPath}.`,
-            `Copy into apps/web/public/results/${basename(outPath)} and run pnpm --filter @crucible/web dev.`
+            'Run crucible web to open the result locally.'
           ]
         : [
             `Inspect failed nodes in ${outPath}.`,
@@ -250,12 +261,29 @@ export function formatOnboardingLocalResult(
   options: { verbose?: boolean } = {}
 ): string {
   const verbose = options.verbose === true;
+  if (result.status === 'MISSING_SCENARIO') {
+    return [
+      'CRUCIBLE NEEDS A BUSINESS SCENARIO',
+      '',
+      'Found:',
+      '✓ Foundry',
+      result.detectedContracts.length ? `✓ ${result.detectedContracts.join(', ')}` : '✓ Contract sources/artifacts inspected',
+      '✓ forge',
+      '✓ anvil',
+      '',
+      'Missing:',
+      '! Business scenario',
+      'Status: MISSING_SCENARIO',
+      '',
+      'Next step:',
+      'Run:',
+      'pnpm dlx @ohmuzakie/crucible-cli scenario create'
+    ].join('\n');
+  }
   const isSuccess = result.status === 'PASSED';
   const canRun = isSuccess
     ? 'Local scenario can run on a fresh Anvil chain.'
-    : result.status === 'MISSING_SCENARIO'
-      ? 'Crucible can prepare the local project, but it will not invent a business flow.'
-      : result.status === 'UNSUPPORTED_TOOLCHAIN'
+    : result.status === 'UNSUPPORTED_TOOLCHAIN'
         ? 'No supported local adapter is available for this repository.'
         : 'Crucible cannot safely start the local test yet.';
 

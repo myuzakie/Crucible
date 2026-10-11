@@ -21,6 +21,7 @@ export type ScenarioContract = {
   abi: Abi;
   functions: ScenarioFunction[];
   constructors: ScenarioConstructor[];
+  selectionReason: string;
 };
 
 export type ScenarioFunction = {
@@ -33,6 +34,32 @@ export type ScenarioFunction = {
 export type ScenarioConstructor = {
   inputs: Array<{ name: string; type: string }>;
 };
+
+export function describeAbiInput(input: { name: string; type: string }, index: number): string {
+  const label = input.name || `value ${index + 1}`;
+  if (input.type === 'address') return `${label} (wallet/address)`;
+  if (/^uint\d*$/.test(input.type) || /^int\d*$/.test(input.type)) return `${label} (number)`;
+  if (input.type === 'bool') return `${label} (yes/no)`;
+  if (input.type === 'string') return `${label} (text)`;
+  return `${label} (${input.type})`;
+}
+
+/** Convert a human-friendly wizard answer to the ABI scalar expected by the runner. */
+export function coerceAbiValue(raw: string, type: string): string | number | boolean {
+  const value = raw.trim();
+  if (type === 'bool') {
+    if (/^(y|yes|true|1)$/i.test(value)) return true;
+    if (/^(n|no|false|0)$/i.test(value)) return false;
+    throw new Error(`Expected yes/no for boolean input, received "${raw}".`);
+  }
+  if (/^uint\d*$/.test(type) || /^int\d*$/.test(type)) {
+    if (!/^-?\d+$/.test(value)) throw new Error(`Expected a number for ${type}, received "${raw}".`);
+    const number = Number(value);
+    if (!Number.isSafeInteger(number)) throw new Error(`Number is outside the safe CLI range for ${type}.`);
+    return number;
+  }
+  return value;
+}
 
 export type CreateScenarioOptions = {
   root: string;
@@ -81,7 +108,29 @@ function readContractArtifact(path: string, name: string): ScenarioContract {
   const constructors = entries
     .filter((entry) => entry.type === 'constructor')
     .map((entry) => ({ inputs: normalizeEntries(entry.inputs) }));
-  return { name, artifactPath: path, abi: artifact.abi, functions, constructors };
+  return { name, artifactPath: path, abi: artifact.abi, functions, constructors, selectionReason: contractSelectionReason(name, path) };
+}
+
+const NON_APPLICATION_NAMES = /(?:^|[-_])(deploy|script|test|mock|fixture|interface|lib|library)(?:$|[-_])/i;
+
+/** Explain the same heuristic used by the wizard, so users can trust its default. */
+export function contractSelectionReason(name: string, artifactPath = ''): string {
+  const normalized = artifactPath.replace(/\\/g, '/');
+  if (/(^|\/)script(\/|$)|\.s\.sol\//i.test(normalized) || /^deploy/i.test(name)) {
+    return 'deployment script, skipped';
+  }
+  if (/(^|\/)test(\/|$)|\.t\.sol\//i.test(normalized) || /test/i.test(name)) {
+    return 'test contract, skipped';
+  }
+  if (/(^|\/)(lib|interfaces)(\/|$)/i.test(normalized) || NON_APPLICATION_NAMES.test(name) || /^(?:Std|Lib|I[A-Z])/.test(name)) {
+    return 'library/interface, skipped';
+  }
+  if (/(^|\/)src(\/|$)/i.test(normalized)) return 'application contract';
+  return 'compiled application contract';
+}
+
+function isPreferredApplicationContract(contract: ScenarioContract): boolean {
+  return contract.selectionReason === 'application contract' || contract.selectionReason === 'compiled application contract';
 }
 
 export function listScenarioContracts(rootInput = process.cwd(), foundryRootInput?: string): ScenarioContract[] {
@@ -93,7 +142,7 @@ export function listScenarioContracts(rootInput = process.cwd(), foundryRootInpu
     const name = basename(candidate, '.json');
     try {
       const contract = readContractArtifact(resolve(root, candidate), name);
-      if (contract.functions.length > 0) contracts.push(contract);
+      if (contract.functions.length > 0 && !contract.selectionReason.endsWith('skipped')) contracts.push(contract);
     } catch {
       // Library/test artifacts are intentionally skipped from the wizard list.
     }
@@ -101,7 +150,10 @@ export function listScenarioContracts(rootInput = process.cwd(), foundryRootInpu
   if (!contracts.length && report.artifacts.candidates.length === 0) {
     throw new Error(`No compiled contract artifacts found. Run forge build in ${resolve(root, foundryRoot)} first.`);
   }
-  return contracts.sort((a, b) => a.name.localeCompare(b.name));
+  return contracts.sort((a, b) => {
+    const preference = Number(isPreferredApplicationContract(b)) - Number(isPreferredApplicationContract(a));
+    return preference || a.name.localeCompare(b.name);
+  });
 }
 
 function findFunction(contract: ScenarioContract, name: string, label: string): ScenarioFunction {

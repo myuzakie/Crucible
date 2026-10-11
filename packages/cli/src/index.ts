@@ -17,6 +17,8 @@ import {
   formatInitResult,
   formatOnboardingLocalResult,
   createScenarioDraft,
+  coerceAbiValue,
+  describeAbiInput,
   formatScenarioPreview,
   initCrucible,
   listScenarioContracts,
@@ -36,26 +38,30 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { isLocalTestCommand, localTestUsage } from './command-contract.js';
 import { startWebViewer } from './web.js';
 import { formatTestnetResult, runMonadTestnetTest } from './testnet.js';
+import { isInteractive, printError, printHome, printPanel, printUrl, printUsage, readVersion, runInteractiveHome, startSpinner } from './ui.js';
+
+const VERSION = readVersion(new URL('../package.json', import.meta.url).pathname);
+
+const USAGE_LINES = [
+  'Usage:',
+  '  crucible                         Open the welcome screen',
+  '  crucible detect [--root path] [--json]',
+  '  crucible doctor [--root path] [--json]',
+  '  crucible init [--root path] [--json]',
+  '  crucible test [--local] [--scenario path] [--root path] [--foundry-root path] [--out path] [--verbose|--json]',
+  '  crucible test --network monad-testnet --dry-run [--scenario path] [--root path] [--foundry-root path]',
+  '  crucible test --network monad-testnet --confirm-testnet [--scenario path] [--root path] [--foundry-root path] [--out path]',
+  '  crucible scenario create [--root path] [--foundry-root path] [--contract name] [--call fn] [--assert fn] [--yes]',
+  '  crucible web [--result result.json] [--root path] [--port 5173]',
+  '  crucible validate <scenario-or-template.json>',
+  '  crucible run <scenario.json> --network local [--foundry-root path] [--rpc url] [--out result.json]',
+  '  crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
+  '  crucible verify <certificate.json>',
+  '  crucible publish <certificate.json> --rpc url --registry 0x… [--key-env ENV] [--uri url] [--out certificate.json]'
+];
 
 function usage(): never {
-  console.error(
-    [
-      'Usage:',
-      '  pnpm crucible detect [--root path] [--json]',
-      '  pnpm crucible doctor [--root path] [--json]',
-      '  pnpm crucible init [--root path] [--json]',
-      '  pnpm crucible test [--local] [--scenario path] [--root path] [--foundry-root path] [--out path] [--verbose|--json]',
-      '  pnpm crucible test --network monad-testnet --dry-run [--scenario path] [--root path] [--foundry-root path]',
-      '  pnpm crucible test --network monad-testnet --confirm-testnet [--scenario path] [--root path] [--foundry-root path] [--out path]',
-      '  pnpm crucible scenario create [--root path] [--foundry-root path] [--contract name] [--call fn] [--assert fn] [--yes]',
-      '  pnpm crucible web --result <result.json> [--port 5173]',
-      '  pnpm crucible validate <scenario-or-template.json>',
-      '  pnpm crucible run <scenario.json> --network local [--foundry-root path] [--rpc url] [--out result.json]',
-      '  pnpm crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
-      '  pnpm crucible verify <certificate.json>',
-      '  pnpm crucible publish <certificate.json> --rpc url --registry 0x… [--key-env ENV] [--uri url] [--out certificate.json]'
-    ].join('\n')
-  );
+  printUsage(USAGE_LINES);
   process.exit(1);
 }
 
@@ -92,7 +98,7 @@ function scalarFlag(args: string[], name: string): string | number | boolean | u
 }
 
 async function ask(question: string, fallback = ''): Promise<string> {
-  const answer = await prompt.question(`${question}${fallback ? ` [${fallback}]` : ''}: `);
+  const answer = await prompt.question(`? ${question}${fallback ? ` [${fallback}]` : ''}: `);
   return answer.trim() || fallback;
 }
 
@@ -138,10 +144,16 @@ async function runScenarioCreate(args: string[], root: string): Promise<void> {
 
   let contractName = args.includes('--contract') ? flag(args, '--contract') : '';
   if (!contractName) {
-    console.log('Detected contracts:');
-    contracts.forEach((contract, index) => console.log(`${index + 1}. ${contract.name}`));
-    const choice = Number(await ask('Choose contract', '1')) - 1;
-    contractName = contracts[choice]?.name ?? '';
+    const preferred = contracts[0];
+    if (contracts.length === 1) {
+      contractName = preferred.name;
+      console.log(`Which contract? ${contractName} (${preferred.selectionReason})`);
+    } else {
+      console.log('Which contract?');
+      contracts.forEach((contract, index) => console.log(`${index + 1}. ${contract.name} — ${contract.selectionReason}`));
+      const choice = Number(await ask('Choose contract', '1')) - 1;
+      contractName = contracts[choice]?.name ?? '';
+    }
   }
   const contract = contracts.find((candidate) => candidate.name === contractName);
   if (!contract) throw new Error(`Contract ${contractName} was not found in compiled artifacts.`);
@@ -153,34 +165,52 @@ async function runScenarioCreate(args: string[], root: string): Promise<void> {
   }
   const chooseFunction = async (label: string, functions: typeof contract.functions, selected?: string) => {
     if (selected) return selected;
-    console.log(`${label} functions:`);
-    functions.forEach((fn, index) => console.log(`${index + 1}. ${fn.name}(${fn.inputs.map((input) => input.type).join(', ')})`));
-    const choice = Number(await ask(`Choose ${label.toLowerCase()} function`, '1')) - 1;
-    return functions[choice]?.name ?? '';
+    const preferred = label === 'Write'
+      ? functions.find((fn) => fn.inputs.some((input) => input.type === 'string')) ?? functions.find((fn) => /set|greet|update/i.test(fn.name))
+      : functions.find((fn) => fn.inputs.length === 0 && /greet|owner|balance|name|value/i.test(fn.name)) ?? functions.find((fn) => fn.inputs.length === 0);
+    return (preferred ?? functions[0])?.name ?? '';
   };
   const call = await chooseFunction('Write', writable, args.includes('--call') ? flag(args, '--call') : undefined);
-  const assertion = await chooseFunction('Read/assertion', readable, args.includes('--assert') ? flag(args, '--assert') : undefined);
+  const callFunction = contract.functions.find((fn) => fn.name === call)!;
+  const assertionOverride = args.includes('--assert') ? flag(args, '--assert') : undefined;
+  const matchingAssertion = readable.find((fn) =>
+    callFunction.outputs.length > 0 && fn.inputs.length > 0 && fn.inputs[0].type === callFunction.outputs[0]?.type
+  )?.name;
+  const assertion = assertionOverride ?? matchingAssertion ?? await chooseFunction('Read/assertion', readable);
   if (!call || !assertion) throw new Error('A call and an assertion function are required.');
 
-  const name = args.includes('--name')
-    ? flag(args, '--name')
-    : await ask('Scenario name', `${contract.name.toLowerCase()}-${call.toLowerCase()}`);
+  const askInputs = async (label: string, inputs: Array<{ name: string; type: string }>, defaults: unknown[] = []) => {
+    if (args.includes('--yes')) return defaults;
+    const values: unknown[] = [];
+    for (let index = 0; index < inputs.length; index += 1) {
+      const input = inputs[index];
+      const fallback = defaults[index] === undefined ? '' : String(defaults[index]);
+      const answer = await ask(`${label} ${describeAbiInput(input, index)}`, fallback);
+      values.push(coerceAbiValue(answer, input.type));
+    }
+    return values;
+  };
+  const assertionFunction = contract.functions.find((fn) => fn.name === assertion)!;
+  const constructorInputs = contract.constructors[0]?.inputs ?? [];
   const constructorArgs = args.includes('--constructor-args-json')
     ? jsonFlag(args, '--constructor-args-json')
-    : args.includes('--yes')
-      ? []
-      : JSON.parse((await ask('Constructor args as JSON', '[]')) || '[]');
+    : await askInputs('Constructor value for', constructorInputs);
+  const callDefaults = callFunction.inputs.map((input) => input.type === 'string' ? 'Hello Crucible' : undefined);
   const callArgs = args.includes('--call-args-json')
     ? jsonFlag(args, '--call-args-json')
-    : args.includes('--yes')
-      ? []
-      : JSON.parse((await ask('Call args as JSON', '[]')) || '[]');
+    : await askInputs(`What should ${call} receive for`, callFunction.inputs, callDefaults);
   const assertionArgs = args.includes('--assert-args-json')
     ? jsonFlag(args, '--assert-args-json')
-    : args.includes('--yes')
-      ? []
-      : JSON.parse((await ask('Assertion args as JSON', '[]')) || '[]');
-  const expected = scalarFlag(args, '--expected') ?? (args.includes('--yes') ? undefined : scalarFlag([ '--expected', await ask('Expected value as JSON', '') ], '--expected'));
+    : await askInputs(`Assertion input for`, assertionFunction.inputs);
+  const expectedDefault = callArgs.length === 1 && callFunction.inputs[0]?.type === assertionFunction.outputs[0]?.type
+    ? callArgs[0]
+    : undefined;
+  const expected = scalarFlag(args, '--expected') ?? (args.includes('--yes') || expectedDefault === undefined
+    ? undefined
+    : coerceAbiValue(await ask(`What should be asserted? ${assertion} equals`, String(expectedDefault)), assertionFunction.outputs[0]?.type ?? 'string'));
+  const name = args.includes('--name')
+    ? flag(args, '--name')
+    : `${contract.name.toLowerCase()}-${call.toLowerCase()}`;
   const result = createScenarioDraft({
     root,
     foundryRoot,
@@ -201,12 +231,24 @@ async function runScenarioCreate(args: string[], root: string): Promise<void> {
     return;
   }
   const path = writeScenario(result, args.includes('--overwrite'));
-  console.log(`Created: ${path}`);
+  printPanel('SCENARIO CREATED', [
+    ['Path', path],
+    ['Next', 'crucible test']
+  ]);
   prompt.close();
 }
 
 const [command, ...rest] = process.argv.slice(2);
-if (!command) usage();
+if (!command) {
+  await runInteractiveHome(VERSION);
+  if (!isInteractive()) printUsage(USAGE_LINES);
+  process.exit(0);
+}
+if (command === '--help' || command === '-h') {
+  printHome(VERSION);
+  printUsage(USAGE_LINES);
+  process.exit(0);
+}
 
 try {
   if (command === 'scenario' && rest[0] === 'create') {
@@ -216,14 +258,14 @@ try {
   }
 
   if (command === 'web') {
-    const resultPath = flag(rest, '--result');
+    const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
+    const resultPath = rest.includes('--result')
+      ? flag(rest, '--result')
+      : resolve(root, 'crucible', 'results', 'latest.json');
     const port = Number(flag(rest, '--port', '5173'));
     if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid --port. Use a number between 0 and 65535.');
     const viewer = await startWebViewer({ resultPath, port });
-    console.log('CRUCIBLE WEB VIEWER');
-    console.log(`URL: ${viewer.url}`);
-    console.log('Result: loaded locally without RPC or private keys.');
-    console.log('Press Ctrl+C to stop.');
+    printUrl(viewer.url, resultPath);
     const stop = async () => {
       await viewer.close();
       process.exit(0);
@@ -272,6 +314,7 @@ try {
       const scenarioPath = rest.includes('--scenario') ? flag(rest, '--scenario') : undefined;
       if (!scenarioPath) throw new Error('Missing --scenario for Monad Testnet. Use a real business scenario; Crucible will not invent one.');
       const { foundryRoot, artifactDir } = await resolveFoundryRoot(rest, root);
+      const stopSpinner = startSpinner('Running guarded Monad Testnet check');
       const result = await runMonadTestnetTest({
         scenario: await loadScenario(resolve(root, scenarioPath)),
         foundryRoot,
@@ -281,6 +324,7 @@ try {
         confirmed: rest.includes('--confirm-testnet'),
         dryRun: rest.includes('--dry-run')
       });
+      stopSpinner();
       if (rest.includes('--json')) console.log(JSON.stringify(result, null, 2));
       else console.log(formatTestnetResult(result));
       process.exit(result.status === 'PASSED' || result.status === 'TESTNET_DRY_RUN' ? 0 : 1);
@@ -289,13 +333,15 @@ try {
       throw new Error(`Only local testing is available. ${localTestUsage()}`);
     }
     const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
+    const stopSpinner = startSpinner('Preparing local Foundry test');
     const result = await runOnboardingLocalTest({
       root,
       scenarioPath: rest.includes('--scenario') ? flag(rest, '--scenario') : undefined,
       foundryRoot: rest.includes('--foundry-root') ? flag(rest, '--foundry-root') : undefined,
-      outPath: flag(rest, '--out', 'result.json'),
+      outPath: rest.includes('--out') ? flag(rest, '--out') : undefined,
       autoInit: true
     });
+    stopSpinner();
     if (rest.includes('--json')) {
       console.log(JSON.stringify(result, null, 2));
     } else {
@@ -409,6 +455,8 @@ try {
     console.error(`${error.status}: ${error.message}`);
     process.exit(1);
   }
-  console.error(error instanceof Error ? error.message : String(error));
+  const message = error instanceof Error ? error.message : String(error);
+  if (rest.includes('--json')) console.error(message);
+  else printError(message);
   process.exit(1);
 }

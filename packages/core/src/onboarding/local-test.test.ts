@@ -72,6 +72,22 @@ test('onboarding reports MISSING_SCENARIO without inventing deploy steps', async
   }
 });
 
+test('onboarding refuses to guess among multiple Foundry projects', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'crucible-onboard-multi-'));
+  try {
+    mkdirSync(join(root, 'first'), { recursive: true });
+    mkdirSync(join(root, 'second'), { recursive: true });
+    writeFileSync(join(root, 'first', 'foundry.toml'), '[profile.default]\nout = "out"\n');
+    writeFileSync(join(root, 'second', 'foundry.toml'), '[profile.default]\nout = "out"\n');
+    const result = await runOnboardingLocalTest({ root, autoInit: false });
+    assert.equal(result.status, 'UNSUPPORTED_TOOLCHAIN');
+    assert.match(result.summary, /Multiple Foundry projects/);
+    assert.match(result.nextSteps.join('\n'), /--root/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('onboarding happy path runs detect → build → Anvil → test', async () => {
   const root = resolve('examples/monad-erc721-demo');
   const outPath = join(mkdtempSync(join(tmpdir(), 'crucible-onboard-out-')), 'result.json');

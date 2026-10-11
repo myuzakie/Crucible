@@ -33,7 +33,15 @@ function contractsFromArtifacts(candidates: string[]): string[] {
   const names = new Set<string>();
   for (const candidate of candidates) {
     const name = basename(candidate, '.json');
-    if (name && !name.endsWith('.t') && !name.endsWith('.s')) names.add(name);
+    if (
+      name &&
+      !name.endsWith('.t') &&
+      !name.endsWith('.s') &&
+      !/^deploy/i.test(name) &&
+      !/(?:deploy|verify|test|mock|fixture|helper)$/i.test(name) &&
+      !/^(?:Std|Lib|I[A-Z])/.test(name) &&
+      !/helper/i.test(name)
+    ) names.add(name);
   }
   return [...names].sort();
 }
@@ -68,7 +76,7 @@ function contractsFromSources(foundryAbs: string): string[] {
     }
     for (const match of source.matchAll(/\bcontract\s+([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
       const name = match[1];
-      if (name) names.add(name);
+      if (name && /^[A-Z]/.test(name) && !/^deploy/i.test(name) && !/(?:deploy|verify|test|mock|fixture|helper)$/i.test(name) && !/^(?:Std|Lib|I[A-Z])/.test(name)) names.add(name);
     }
   }
   return [...names].sort();
@@ -146,10 +154,10 @@ export function initCrucible(rootInput = process.cwd()): InitResult {
       : [
           'MISSING_SCENARIO: no Crucible scenario JSON was found.',
           contractSummary,
-          'Add scenarios/<name>.json that deploys a real contract from this repo with business assertions you choose.',
-          'Do not invent mint/balanceOf/ownerOf unless those functions exist on the chosen contract.',
-          'Optional template: fixtures/scenarios/mint-nft.json (only if your contract matches mint/ownerOf).',
-          'Re-run crucible init after adding a scenario, then crucible test.'
+          'Run pnpm dlx @ohmuzakie/crucible-cli scenario create to create a business scenario from the contract ABI.',
+          'The wizard asks human-friendly questions and will not invent deploy/call/assert steps.',
+          'Optional template: fixtures/scenarios/mint-nft.json (only when the contract actually matches mint/ownerOf).',
+          'Then run pnpm dlx @ohmuzakie/crucible-cli test.'
         ];
 
   return { root, status, created, skipped, config, detectedContracts, nextSteps };

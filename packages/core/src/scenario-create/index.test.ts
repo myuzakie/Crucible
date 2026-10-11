@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 
-import { createScenarioDraft, formatScenarioPreview, writeScenario } from './index.js';
+import { coerceAbiValue, createScenarioDraft, formatScenarioPreview, listScenarioContracts, writeScenario } from './index.js';
 
 function artifactRoot() {
   const root = mkdtempSync(join(tmpdir(), 'crucible-scenario-create-'));
@@ -56,4 +56,27 @@ test('refuses to overwrite an existing scenario without explicit permission', ()
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('prefers application contracts and hides deployment/test/library artifacts', () => {
+  const root = artifactRoot();
+  try {
+    for (const name of ['DeployYourContract', 'YourContractTest', 'StdAssertions']) {
+      mkdirSync(join(root, 'out', `${name}.sol`), { recursive: true });
+      writeFileSync(join(root, 'out', `${name}.sol`, `${name}.json`), JSON.stringify({
+        abi: [{ type: 'function', name: 'helper', stateMutability: 'view', inputs: [], outputs: [] }],
+        bytecode: { object: '0x6000' }
+      }));
+    }
+    const contracts = listScenarioContracts(root, '.');
+    assert.deepEqual(contracts.map((contract) => contract.name), ['YourContract']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('coerces common ABI scalar answers without JSON syntax', () => {
+  assert.equal(coerceAbiValue('yes', 'bool'), true);
+  assert.equal(coerceAbiValue('42', 'uint256'), 42);
+  assert.equal(coerceAbiValue('Hello Crucible', 'string'), 'Hello Crucible');
 });
