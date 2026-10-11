@@ -44,3 +44,6 @@ steps and must use a dedicated funded test wallet.
 Crucible does not claim that a generic EVM pass means Monad readiness. It
 connects a real user journey to runtime evidence, explains the user impact,
 proves the fix by replay, and produces a version-bound Runtime Passport.
+
+For the detailed UI flow, Monad protocol context, test commands, and
+troubleshooting, see [docs/CRUCIBLE_RUNTIME_GUIDE.md](docs/CRUCIBLE_RUNTIME_GUIDE.md).

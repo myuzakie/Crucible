@@ -80,6 +80,9 @@ pnpm judge:check
 Then follow [JUDGE_README.md](JUDGE_README.md). The submission checklist is in
 [SUBMISSION_FREEZE.md](SUBMISSION_FREEZE.md).
 
+For the current Web UX, Monad runtime context, detailed user flow, test matrix,
+and troubleshooting, see [Crucible Runtime Verification Guide](docs/CRUCIBLE_RUNTIME_GUIDE.md).
+
 It validates the happy/buggy scenarios, RunResult fixtures, diagnosis evidence, offline certificate, Web assets, and the malformed-result fallback. It does not call Monad or require a wallet.
 
 Recommended demo order:
