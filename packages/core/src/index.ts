@@ -36,3 +36,4 @@ export * from './templates/index.js';
 export * from './tooling.js';
 export * from './onboarding/index.js';
 export * from './scenario-create/index.js';
+export * from './project/index.js';

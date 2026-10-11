@@ -37,6 +37,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 
 import { isLocalTestCommand, localTestUsage } from './command-contract.js';
 import { startWebViewer } from './web.js';
+import { startLocalRunner } from './connect.js';
 import { formatTestnetResult, runMonadTestnetTest } from './testnet.js';
 import { isInteractive, printError, printHome, printPanel, printUrl, printUsage, readVersion, runInteractiveHome, startSpinner } from './ui.js';
 
@@ -53,6 +54,7 @@ const USAGE_LINES = [
   '  crucible test --network monad-testnet --confirm-testnet [--scenario path] [--root path] [--foundry-root path] [--out path]',
   '  crucible scenario create [--root path] [--foundry-root path] [--contract name] [--call fn] [--assert fn] [--yes]',
   '  crucible web [--result result.json] [--root path] [--port 5173]',
+  '  crucible connect --root path [--name label] [--host 127.0.0.1] [--port 8787]',
   '  crucible validate <scenario-or-template.json>',
   '  crucible run <scenario.json> --network local [--foundry-root path] [--rpc url] [--out result.json]',
   '  crucible certify <scenario.json> <result.json> <diagnosis.json> [--key key.pem] [--out certificate.json]',
@@ -271,6 +273,23 @@ try {
       await viewer.close();
       process.exit(0);
     };
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+    await new Promise<void>(() => undefined);
+  }
+
+  if (command === 'connect') {
+    const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
+    const port = Number(flag(rest, '--port', '8787'));
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid --port. Use a number between 0 and 65535.');
+    const runner = await startLocalRunner({ root, name: rest.includes('--name') ? flag(rest, '--name') : undefined, host: rest.includes('--host') ? flag(rest, '--host') : undefined, port });
+    printPanel('CRUCIBLE LOCAL RUNNER', [
+      ['URL', runner.url],
+      ['Repository', runner.snapshot.project.root],
+      ['Status', runner.snapshot.detection.status],
+      ['Next', 'Connect this URL from the Crucible Web project screen.']
+    ]);
+    const stop = async () => { await runner.close(); process.exit(0); };
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
     await new Promise<void>(() => undefined);
