@@ -20,6 +20,14 @@ function clearScreen(): void {
   if (isInteractive()) process.stdout.write('\u001b[2J\u001b[H');
 }
 
+function enterInteractiveSurface(): void {
+  process.stdout.write('\u001b[?1049h\u001b[?25l\u001b[H');
+}
+
+function leaveInteractiveSurface(): void {
+  process.stdout.write('\u001b[?25h\u001b[?1049l');
+}
+
 function logoLines(): string[] {
   // Keep the asset itself immutable. Only discard empty framing lines from the
   // pasted source so the terminal composition does not acquire a giant gutter.
@@ -103,11 +111,31 @@ export async function runInteractiveHome(version: string): Promise<void> {
   process.stdin.resume();
   let selected = 0;
   let active = true;
+  let surfaceActive = false;
+  const onSigint = () => {
+    cleanup();
+    process.exit(0);
+  };
+  const enterSurface = () => {
+    if (!surfaceActive) {
+      enterInteractiveSurface();
+      surfaceActive = true;
+    }
+  };
+  const leaveSurface = () => {
+    if (surfaceActive) {
+      leaveInteractiveSurface();
+      surfaceActive = false;
+    }
+  };
   const cleanup = () => {
+    if (!active && !surfaceActive) return;
     active = false;
     process.stdin.setRawMode(false);
     process.stdin.pause();
     process.stdin.removeListener('keypress', onKeypress);
+    process.removeListener('SIGINT', onSigint);
+    leaveSurface();
     process.stdout.write('\n');
   };
   const onKeypress = async (_input: string, key: Key) => {
@@ -127,18 +155,18 @@ export async function runInteractiveHome(version: string): Promise<void> {
       }
       process.stdin.setRawMode(false);
       process.stdin.pause();
+      leaveSurface();
       await runExistingCommand(item.args);
       if (!active) return;
+      enterSurface();
       process.stdin.setRawMode(true);
       process.stdin.resume();
     }
     renderMenu(version, selected);
   };
-  process.once('SIGINT', () => {
-    cleanup();
-    process.exit(0);
-  });
+  process.once('SIGINT', onSigint);
   process.stdin.on('keypress', onKeypress);
+  enterSurface();
   renderMenu(version, selected);
   await new Promise<void>(() => undefined);
 }
