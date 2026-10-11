@@ -6,6 +6,7 @@ contract CertificateRegistry {
         address issuer;
         uint64 timestamp;
         string uri;
+        string suiteVersion;
         bool exists;
     }
 
@@ -20,9 +21,23 @@ contract CertificateRegistry {
             issuer: msg.sender,
             timestamp: uint64(block.timestamp),
             uri: uri,
+            suiteVersion: "",
             exists: true
         });
         emit CertificateRegistered(contentHash, msg.sender, uri);
+    }
+
+    function registerPassport(bytes32 passportHash, string calldata uri, string calldata suiteVersion) external {
+        require(passportHash != bytes32(0), "empty hash");
+        require(!records[passportHash].exists, "already registered");
+        records[passportHash] = Record({
+            issuer: msg.sender,
+            timestamp: uint64(block.timestamp),
+            uri: uri,
+            suiteVersion: suiteVersion,
+            exists: true
+        });
+        emit CertificateRegistered(passportHash, msg.sender, uri);
     }
 
     function get(bytes32 contentHash) external view returns (Record memory) {

@@ -1,4 +1,5 @@
 export * from './contract.js';
+export * from './remediation.js';
 export {
   buildDiagnosisPrompt,
   createOpenAICompatibleClient,

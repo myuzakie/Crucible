@@ -1,0 +1,51 @@
+{
+  "profile": "monad-core",
+  "suiteVersion": "1.0.0",
+  "findings": [
+    {
+      "findingId": "MND-TIME-001:auction:bid",
+      "ruleId": "MND-TIME-001",
+      "journeyId": "auction",
+      "nodeId": "bid",
+      "status": "failed",
+      "userImpact": "Time-sensitive bid ordering may treat multiple blocks as the same moment.",
+      "summary": "Adjacent blocks share a timestamp.",
+      "expected": "current timestamp is greater than the previous timestamp",
+      "observed": { "previousBlock": 501, "previousTimestamp": 1000, "currentBlock": 502, "currentTimestamp": 1000 },
+      "evidence": [
+        { "type": "block", "source": "fixture", "observed": { "number": 501, "timestamp": 1000 }, "blockNumber": 501, "blockTimestamp": 1000 },
+        { "type": "block", "source": "fixture", "observed": { "number": 502, "timestamp": 1000 }, "blockNumber": 502, "blockTimestamp": 1000 }
+      ],
+      "remediationClass": "avoid-block-timestamp-equality"
+    },
+    {
+      "findingId": "MND-FINALITY-001:settlement:release-product",
+      "ruleId": "MND-FINALITY-001",
+      "journeyId": "settlement",
+      "nodeId": "release-product",
+      "status": "failed",
+      "userImpact": "A product or payment may be released while the transaction is still processing.",
+      "summary": "An irreversible action was triggered before the required assurance level.",
+      "expected": "finalized",
+      "observed": "proposed",
+      "evidence": [
+        { "type": "assurance", "source": "fixture", "observed": "proposed", "expected": "finalized", "assuranceLevel": "proposed" }
+      ]
+    },
+    {
+      "findingId": "MND-FUND-001:new-user-purchase:purchase",
+      "ruleId": "MND-FUND-001",
+      "journeyId": "new-user-purchase",
+      "nodeId": "purchase",
+      "status": "failed",
+      "userImpact": "A first-time user may fail during the first purchase immediately after funding.",
+      "summary": "The first funded-account action did not respect the safe block distance.",
+      "expected": { "requiredSafeDistance": 3, "firstAttempt": "passed after the safe distance" },
+      "observed": { "firstDistance": 1, "firstAttempt": "failed", "retryBlock": 12054, "retryAttempt": "passed" },
+      "evidence": [
+        { "type": "blockDistance", "source": "fixture", "observed": 1, "expected": 3, "blockNumber": 12052, "metadata": { "fundingBlock": 12051, "attemptBlock": 12052, "requiredSafeDistance": 3, "firstAttempt": "failed" } },
+        { "type": "blockDistance", "source": "fixture", "observed": 3, "expected": 3, "blockNumber": 12054, "metadata": { "retryAttempt": "passed" } }
+      ]
+    }
+  ]
+}

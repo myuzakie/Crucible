@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "0.1",
+  "runId": "monad-runtime-vulnerable",
+  "scenario": "monad-runtime-demo",
+  "status": "failed",
+  "score": 42,
+  "network": { "name": "monad-fixture", "chainId": 10143, "explorerUrl": "https://testnet.monadexplorer.com" },
+  "startedAt": "2026-10-11T10:00:00.000Z",
+  "finishedAt": "2026-10-11T10:00:02.000Z",
+  "nodes": [
+    { "id": "deploy", "status": "passed", "durationMs": 120 },
+    { "id": "fund", "status": "passed", "durationMs": 90 },
+    { "id": "purchase", "status": "failed", "durationMs": 18, "error": { "kind": "rpc", "message": "First funded-account action is not yet safe." } },
+    { "id": "release-product", "status": "failed", "durationMs": 14, "error": { "kind": "rpc", "message": "Required assurance is finalized; observed proposed." } },
+    { "id": "bid", "status": "failed", "durationMs": 12, "error": { "kind": "assertion", "message": "Adjacent blocks share a timestamp." } },
+    { "id": "settlement", "status": "skipped", "durationMs": 0 },
+    { "id": "purchase-count", "status": "skipped", "durationMs": 0 },
+    { "id": "highest-bid", "status": "skipped", "durationMs": 0 }
+  ],
+  "summary": { "passed": 2, "failed": 3, "skipped": 3 },
+  "verifiedReplay": {
+    "status": "runtime-verified",
+    "beforeRunId": "monad-runtime-vulnerable",
+    "afterRunId": "monad-runtime-fixed",
+    "scenarioHash": "runtime-demo-scenario-v1",
+    "suiteVersion": "1.0.0",
+    "profile": "monad-core",
+    "ruleSetHash": "monad-core-rules-v1",
+    "diffSummary": { "recoveredJourneys": ["new-user-purchase", "settlement", "auction"], "failedBefore": 3, "passedAfter": 3 }
+  },
+  "runtimeVerification": {
+    "profile": "monad-core",
+    "suiteVersion": "1.0.0",
+    "findings": [
+      { "findingId": "MND-FUND-001:new-user-purchase:purchase", "ruleId": "MND-FUND-001", "journeyId": "new-user-purchase", "nodeId": "purchase", "status": "failed", "userImpact": "A first-time user may fail during the first purchase immediately after funding.", "summary": "The first funded-account action did not respect the safe block distance.", "expected": { "requiredSafeDistance": 3 }, "observed": { "firstDistance": 1, "firstAttempt": "failed" }, "evidence": [{ "type": "blockDistance", "source": "fixture", "observed": 1, "expected": 3, "blockNumber": 12052, "metadata": { "fundingBlock": 12051, "attemptBlock": 12052 } }] },
+      { "findingId": "MND-FINALITY-001:settlement:release-product", "ruleId": "MND-FINALITY-001", "journeyId": "settlement", "nodeId": "release-product", "status": "failed", "userImpact": "A product or payment may be released while the transaction is still processing.", "summary": "An irreversible action was triggered before the required assurance level.", "expected": "finalized", "observed": "proposed", "evidence": [{ "type": "assurance", "source": "fixture", "observed": "proposed", "expected": "finalized", "assuranceLevel": "proposed" }] },
+      { "findingId": "MND-TIME-001:auction:bid", "ruleId": "MND-TIME-001", "journeyId": "auction", "nodeId": "bid", "status": "failed", "userImpact": "Time-sensitive bid ordering may treat multiple blocks as the same moment.", "summary": "Adjacent blocks share a timestamp.", "expected": "current timestamp is greater than the previous timestamp", "observed": { "previousBlock": 501, "previousTimestamp": 1000, "currentBlock": 502, "currentTimestamp": 1000 }, "evidence": [{ "type": "block", "source": "fixture", "observed": { "number": 501, "timestamp": 1000 }, "blockNumber": 501, "blockTimestamp": 1000 }, { "type": "block", "source": "fixture", "observed": { "number": 502, "timestamp": 1000 }, "blockNumber": 502, "blockTimestamp": 1000 }] }
+    ]
+  }
+}

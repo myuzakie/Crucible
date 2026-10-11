@@ -1,19 +1,15 @@
-import type { RunResult } from '@crucible/core/schema';
+import { RunResultSchema, type RunResult, type RuntimeFinding } from '@crucible/core/schema';
 
 export type Status = 'passed' | 'failed' | 'skipped';
 export type { RunResult };
 export type NodeResult = RunResult['nodes'][number];
 
 export function validateResult(value: unknown): RunResult {
-  if (!value || typeof value !== 'object') throw new Error('RunResult bukan object.');
-  const result = value as Partial<RunResult>;
-  if (!result.scenario || !result.status || !Array.isArray(result.nodes)) {
-    throw new Error('RunResult tidak memiliki scenario, status, atau nodes.');
+  try {
+    return RunResultSchema.parse(value);
+  } catch {
+    throw new Error('RunResult tidak valid.');
   }
-  if (!result.network || typeof result.network.chainId !== 'number') {
-    throw new Error('RunResult network atau chainId tidak valid.');
-  }
-  return value as RunResult;
 }
 
 export function replaySequence(nodes: NodeResult[]): string[] {
@@ -23,4 +19,16 @@ export function replaySequence(nodes: NodeResult[]): string[] {
     if (node.status === 'failed') break;
   }
   return sequence;
+}
+
+export function runtimeFindings(result: RunResult): RuntimeFinding[] {
+  return result.runtimeVerification?.findings ?? [];
+}
+
+export function runtimeJourneys(result: RunResult): string[] {
+  return [...new Set(runtimeFindings(result).map((finding) => finding.journeyId))];
+}
+
+export function findingsForJourney(result: RunResult, journeyId: string): RuntimeFinding[] {
+  return runtimeFindings(result).filter((finding) => finding.journeyId === journeyId);
 }
