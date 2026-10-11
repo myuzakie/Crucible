@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { RuntimeVerificationSchema, type RuntimeVerification } from '../runtime/index.js';
+import {
+  RuntimeVerificationSchema,
+  type RuntimeEvidence,
+  type RuntimeFinding,
+  type RuntimeRule,
+  type RuntimeVerification,
+  type VerificationProfile
+} from '../runtime/index.js';
 
 const NodeId = z.string().min(1);
 const Args = z.array(z.unknown()).default([]);
@@ -131,4 +138,10 @@ export type ScenarioMetadata = z.infer<typeof ScenarioMetadataSchema>;
 export type ExecutionError = z.infer<typeof ExecutionErrorSchema>;
 export type NodeResult = z.infer<typeof NodeResultSchema>;
 export type RunResult = z.infer<typeof RunResultSchema>;
-export type { RuntimeVerification };
+export type {
+  RuntimeEvidence,
+  RuntimeFinding,
+  RuntimeRule,
+  RuntimeVerification,
+  VerificationProfile
+};

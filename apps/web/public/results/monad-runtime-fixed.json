@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "0.1",
+  "runId": "monad-runtime-fixed",
+  "scenario": "monad-runtime-demo-fixed",
+  "status": "passed",
+  "score": 100,
+  "network": { "name": "monad-fixture", "chainId": 10143, "explorerUrl": "https://testnet.monadexplorer.com" },
+  "startedAt": "2026-10-11T10:01:00.000Z",
+  "finishedAt": "2026-10-11T10:01:02.000Z",
+  "nodes": [
+    { "id": "deploy", "status": "passed", "durationMs": 120 },
+    { "id": "fund", "status": "passed", "durationMs": 90 },
+    { "id": "purchase", "status": "passed", "durationMs": 18 },
+    { "id": "release-product", "status": "passed", "durationMs": 14 },
+    { "id": "bid", "status": "passed", "durationMs": 12 },
+    { "id": "settlement", "status": "passed", "durationMs": 10 }
+  ],
+  "summary": { "passed": 6, "failed": 0, "skipped": 0 },
+  "runtimeVerification": {
+    "profile": "monad-core",
+    "suiteVersion": "1.0.0",
+    "findings": [
+      { "findingId": "MND-FUND-001:fixed-runtime-demo:purchase", "ruleId": "MND-FUND-001", "journeyId": "new-user-purchase", "nodeId": "purchase", "status": "passed", "summary": "The funded-account action respected the safe block distance.", "expected": { "requiredSafeDistance": 3 }, "observed": { "firstDistance": 3, "firstAttempt": "passed" }, "evidence": [{ "type": "blockDistance", "source": "fixture", "observed": 3, "expected": 3, "blockNumber": 12054 }] },
+      { "findingId": "MND-FINALITY-001:fixed-runtime-demo:settlement", "ruleId": "MND-FINALITY-001", "journeyId": "settlement", "nodeId": "release-product", "status": "passed", "summary": "The irreversible action waited for the required assurance level.", "expected": "finalized", "observed": "finalized", "evidence": [{ "type": "assurance", "source": "fixture", "observed": "finalized", "expected": "finalized", "assuranceLevel": "finalized" }] },
+      { "findingId": "MND-TIME-001:fixed-runtime-demo:auction", "ruleId": "MND-TIME-001", "journeyId": "auction", "nodeId": "bid", "status": "passed", "summary": "Timestamp progression was not assumed between adjacent blocks.", "expected": "current timestamp is greater than the previous timestamp", "observed": { "previousBlock": 501, "previousTimestamp": 1000, "currentBlock": 502, "currentTimestamp": 1001 }, "evidence": [{ "type": "block", "source": "fixture", "observed": { "number": 502, "timestamp": 1001 }, "blockNumber": 502, "blockTimestamp": 1001 }] }
+    ]
+  }
+}
