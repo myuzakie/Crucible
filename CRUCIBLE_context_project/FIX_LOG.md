@@ -34,6 +34,22 @@ Regression test: `pnpm demo:check` plus browser verification of the public
 fixed fixture rendering `STEP 6 / VERIFIED REPLAY` and `Runtime Verified`.
 Status: `fixed; verified`
 
+## FIX-031 — Production `/demo` direct load returned Vercel 404
+
+Date: 2026-10-13
+Task: Production release QA
+Symptom: The newly deployed public root served the M23 landing build, but
+direct navigation or refresh at `/demo` returned Vercel `NOT_FOUND`.
+Root cause: The static Vercel deployment had no SPA rewrite for the canonical
+client-side demo route.
+Fix: Add the narrow `/demo` → `/index.html` rewrite to `vercel.json`; leave
+`/api/*` and static asset paths untouched. Extend `pnpm web:check` to assert
+the rewrite contract.
+Files: `vercel.json`, `scripts/web-deploy-check.ts`.
+Regression test: `pnpm web:check`, full CI, and production browser direct-load
+and refresh checks after redeployment.
+Status: `fixed; awaiting production redeploy`
+
 ## FIX-027 — Packed acceptance JSON included exec failure text
 
 Date: 2026-10-13
