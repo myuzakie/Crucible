@@ -6,6 +6,7 @@ import { RuntimeFlow } from './RuntimeFlow.js';
 import { ProjectOnboarding } from './ProjectOnboarding.js';
 import { PublicApp } from './PublicApp.js';
 import { selectAppSurface } from './app-surface.js';
+import { isPublicDemoRoute } from './public-route.js';
 import { AlertCircle, Bug, FolderGit2, History, LayoutDashboard, ShieldCheck } from 'lucide-react';
 
 const fixtures = [
@@ -26,7 +27,8 @@ const journeyMeta: Record<string, { title: string; flow: string; description: st
 
 const debugMode = new URLSearchParams(window.location.search).get('debug') === '1';
 const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
-const appSurface = selectAppSurface(__CRUCIBLE_BUILD_MODE__, debugMode || demoMode);
+const publicDemoRoute = isPublicDemoRoute(window.location.pathname, window.location.search);
+const appSurface = selectAppSurface(__CRUCIBLE_BUILD_MODE__, publicDemoRoute || debugMode || demoMode);
 
 function journeyLabel(id: string) { return journeyMeta[id]?.title ?? id.replaceAll('-', ' '); }
 function formatDate(value: string) { return new Date(value).toLocaleString(); }
@@ -153,7 +155,16 @@ export function App() {
     return <><p className="eyebrow">YOUR JOURNEY</p><h2>Select a step</h2><p className="empty-copy">Choose a journey step to see its runtime evidence.</p></>;
   }
 
-  return <main className="shell">
+  return <>
+    {publicDemoRoute ? <section className="public-demo-banner" aria-labelledby="public-demo-title">
+      <div>
+        <p className="eyebrow">INTERACTIVE DEMO</p>
+        <h1 id="public-demo-title">See a deterministic runtime verification story.</h1>
+        <p>Deterministic fixture · No repository connected</p>
+      </div>
+      <a className="secondary-button" href="/">Back to Crucible</a>
+    </section> : null}
+    <main className="shell">
     <aside className="sidebar" aria-label="Crucible navigation"><div className="brand-lockup"><div className="brand-mark">C</div><div><strong>CRUCIBLE</strong><span>Runtime verification</span></div></div><nav className="side-nav"><a className="active" href="#journeys"><LayoutDashboard size={16} aria-hidden="true" />Journeys</a><a href="/"><FolderGit2 size={16} aria-hidden="true" />Projects</a><a href="#issues"><AlertCircle size={16} aria-hidden="true" />Issues{failedCount ? <b>{failedCount}</b> : null}</a><a href="#replay"><History size={16} aria-hidden="true" />Replay</a><a href="#passport"><ShieldCheck size={16} aria-hidden="true" />Passport</a></nav><div className="sidebar-bottom"><div className="sidebar-label">CURRENT RUN</div><div className="project-card"><span className="project-dot" />{environmentLabel}<strong>{result?.scenario ?? 'No run selected'}</strong></div><a className="sidebar-demo-link" href="?debug=1"><Bug size={13} aria-hidden="true" />Developer fixtures</a></div></aside>
     <div className="workspace"><header className="topbar"><div><p className="eyebrow">CRUCIBLE / MONAD RUNTIME VERIFICATION</p><h1>Verify your Monad app</h1><p className="lede">Test real user journeys and see where they break before your users do.</p></div><div className="topbar-actions"><span className={`environment-badge ${result?.network.name === 'monad-fixture' ? 'fixture' : 'live'}`}><span />{environmentLabel}</span>{debugMode ? <label className="fixture-picker">Developer fixture<select value={fixture} onChange={(event) => setFixture(event.target.value)}>{fixtures.map((item) => <option key={item.file} value={item.file}>{item.label}</option>)}</select></label> : <a className="debug-link" href={`${window.location.pathname}?debug=1`}>Developer fixtures</a>}</div></header>
       {error ? <section className="error-card" role="alert"><strong>We couldn't load this verification result.</strong><p>The result does not match the Crucible RunResult schema.</p><details><summary>View technical details</summary><code>{error}</code></details><a className="secondary-button" href={window.location.pathname}>Try another run</a></section> : null}
@@ -168,5 +179,6 @@ export function App() {
         {result.scenario === 'token-buggy-mint' && result.status === 'failed' ? <section className="panel diagnosis-panel" aria-live="polite"><div className="panel-heading"><div><p className="eyebrow">SUGGESTED FIX / AI ASSISTED</p><h2>Understand the generic execution failure</h2></div><div className="flow-actions"><span>{diagnosis ? `${Math.round(diagnosis.confidence * 100)}% · ${diagnosisSource === 'live' ? 'live AI' : 'offline fallback'}` : 'Loading diagnosis…'}</span>{diagnosis ? <button className="secondary-button" type="button" onClick={() => void downloadCertificate()}>Download certificate</button> : null}</div></div>{diagnosis ? <div className="diagnosis-grid"><div><span className="diagnosis-label">Root cause</span><p>{diagnosis.rootCause}</p></div><div><span className="diagnosis-label">Evidence</span><ul className="evidence-list">{diagnosis.evidence.map((item) => <li key={`${item.nodeId}-${item.field}`}><code>{item.nodeId}.{item.field}</code> = {item.value}</li>)}</ul></div><div><span className="diagnosis-label">Suggested change</span><p>{diagnosis.suggestedFix}</p></div><div><span className="diagnosis-label">Follow-up test</span><ul className="evidence-list">{diagnosis.followUpTests.map((item) => <li key={item}>{item}</li>)}</ul></div></div> : <p className="diagnosis-unavailable">{diagnosisError || 'Loading cached diagnosis…'}</p>}</section> : null}
       </> : null}
     </div>
-  </main>;
+    </main>
+  </>;
 }

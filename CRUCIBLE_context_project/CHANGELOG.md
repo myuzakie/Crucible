@@ -1,5 +1,15 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23.9 Public Landing and `/demo`
+
+- Replaced the public placeholder with a landing page covering the Crucible
+  story, interactive demo CTA, local CLI quick start, GitHub, and runtime guide.
+- Made `/demo` the canonical public fixture route while retaining `?demo=1` and
+  `?debug=1` compatibility; the route explicitly states `INTERACTIVE DEMO`,
+  `Deterministic fixture`, and `No repository connected`.
+- Browser-verified public root and demo behavior; public runtime requests stay
+  relative and no public path starts a Local Web repository workspace.
+
 ## 2026-10-13 — M23.8 Browser Auto-Open and Shutdown Lifecycle
 
 - Added platform-aware browser opening for `connect`; failure is non-fatal and

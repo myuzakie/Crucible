@@ -1281,14 +1281,18 @@ and same-port restart acceptance.
 
 #### M23.9 — Public landing and `/demo`
 
-Status: `TODO` | Depends: `M23.1`, `M23.2` | Target files: `apps/web/src/`,
+Status: `DONE` | Depends: `M23.1`, `M23.2` | Target files: `apps/web/src/`,
 public fixtures/assets, Web tests, Vercel/deploy checks.
 
 Tests: public root shows landing; `/demo` works offline; install/docs links
 work; hosted build makes zero localhost requests and contains no secrets.
 
 Done when: Public flow is Landing → Demo → Install/Docs and clearly labels the
-demo as deterministic fixture execution.
+demo as deterministic fixture execution. Implemented the public landing and
+install/docs CTAs, canonical `/demo` routing with legacy query compatibility,
+explicit deterministic-fixture/no-repository framing, and browser-verified
+public root/demo behavior. Public runtime uses only relative fixture/API paths;
+Local Web and verification semantics are unchanged.
 
 #### M23.10 — Packed external repository acceptance
 
