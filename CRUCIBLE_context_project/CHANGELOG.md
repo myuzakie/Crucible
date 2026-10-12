@@ -1,5 +1,15 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23.6 Bundle Local Web into CLI Package
+
+- Added a package build step that always builds Web with explicit
+  `VITE_CRUCIBLE_MODE=local` and copies the result into package-local `web/`.
+- Added a bundled `workspace-server` package export that resolves `web/`
+  relative to the installed CLI rather than the Crucible monorepo.
+- Added real tarball acceptance: inspect contents, install in an external
+  temporary repository, verify the CLI executable, and serve `/` plus
+  `/api/health` from the packed package.
+
 ## 2026-10-13 — M23.5 Serve Local Web from Workspace Server
 
 - Connected the workspace static handler to Vite production output so one

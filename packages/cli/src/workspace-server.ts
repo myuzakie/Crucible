@@ -1,5 +1,7 @@
 import { createServer, type Server } from 'node:http';
-import { resolve } from 'node:path';
+import { access } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { dirname, join, resolve } from 'node:path';
 
 import type { ProjectSnapshot } from '@crucible/core';
 import { createRunnerApiHandler } from './runner-api-handler.js';
@@ -22,6 +24,20 @@ export type LocalWorkspaceServerHandle = {
   close: () => Promise<void>;
 };
 
+export function resolveBundledWebRoot(): string {
+  return resolve(dirname(fileURLToPath(import.meta.url)), '..', 'web');
+}
+
+async function findBundledWebRoot(): Promise<string | undefined> {
+  const root = resolveBundledWebRoot();
+  try {
+    await access(join(root, 'index.html'));
+    return root;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function startLocalWorkspaceServer(options: LocalWorkspaceServerOptions): Promise<LocalWorkspaceServerHandle> {
   const host = options.host ?? '127.0.0.1';
   if (host !== '127.0.0.1') throw new Error('Local workspace server must bind to 127.0.0.1.');
@@ -33,7 +49,8 @@ export async function startLocalWorkspaceServer(options: LocalWorkspaceServerOpt
     allowedOrigins: options.allowedOrigins,
     allowSameOrigin: true
   });
-  const staticHandler = await createStaticWebHandler({ rootDir: options.staticRoot, indexHtml: options.indexHtml });
+  const staticRoot = options.staticRoot ?? await findBundledWebRoot();
+  const staticHandler = await createStaticWebHandler({ rootDir: staticRoot, indexHtml: options.indexHtml });
   const server = createServer(async (request, response) => {
     const path = new URL(request.url ?? '/', `http://${host}`).pathname;
     if (path === '/api' || path.startsWith('/api/')) return api.handle(request, response);

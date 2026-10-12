@@ -1241,14 +1241,17 @@ path handling. Published CLI asset packaging remains M23.6 scope.
 
 #### M23.6 — Bundle Web into CLI package
 
-Status: `TODO` | Depends: `M23.5` | Target files: `packages/cli/package.json`,
-build/package scripts, CLI packaging tests, docs.
+Status: `DONE` | Depends: `M23.5` | Target files: `packages/cli/package.json`,
+`packages/cli/scripts/prepare-local-web.mjs`, `scripts/m23-packed-acceptance.ts`,
+package/build scripts, CLI packaging tests, docs.
 
 Tests: `pnpm pack`; inspect tarball; install in a clean external directory;
 verify Web assets are present and no secrets are included.
 
 Done when: the packed CLI contains the local Web production build without
-workspace symlink or monorepo-only dependencies.
+workspace symlink or monorepo-only dependencies. Implemented explicit local
+Web preparation, package-local `web/` assets, a bundled workspace-server
+export, and real tarball install/serve acceptance from an external directory.
 
 #### M23.7 — Upgrade `crucible connect`
 
