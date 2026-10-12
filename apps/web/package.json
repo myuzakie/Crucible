@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:public": "VITE_CRUCIBLE_MODE=public vite",
+    "dev:local": "VITE_CRUCIBLE_MODE=local vite",
     "build": "vite build",
+    "build:public": "VITE_CRUCIBLE_MODE=public vite build",
+    "build:local": "VITE_CRUCIBLE_MODE=local vite build",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -5,7 +5,7 @@ const commands = [
   ['pnpm', ['typecheck']],
   ['pnpm', ['test']],
   ['pnpm', ['judge:check']],
-  ['pnpm', ['--filter', '@crucible/web', 'build']],
+  ['pnpm', ['--filter', '@crucible/web', 'build:public']],
   ['pnpm', ['web:check']],
   ['pnpm', ['test:external', '--json']]
 ] as const;

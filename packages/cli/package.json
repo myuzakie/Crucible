@@ -8,12 +8,18 @@
   },
   "files": [
     "dist",
+    "web",
     "README.md",
     "logo.txt"
   ],
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=bundle --sourcemap --outfile=dist/index.js",
+    "prepare:web": "node scripts/prepare-local-web.mjs",
+    "build": "pnpm prepare:web && esbuild src/index.ts --bundle --platform=node --format=esm --packages=bundle --sourcemap --outfile=dist/index.js && esbuild src/workspace-server.ts --bundle --platform=node --format=esm --packages=bundle --sourcemap --outfile=dist/workspace-server.js",
     "prepack": "pnpm build"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./workspace-server": "./dist/workspace-server.js"
   },
   "dependencies": {
     "viem": "^2.57.4",

@@ -16,4 +16,5 @@ out/
 !fixtures/capabilities/**/out/**
 cache/
 broadcast/
+packages/cli/web/
 .DS_Store

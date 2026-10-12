@@ -2,6 +2,25 @@
 
 Crucible adalah platform pengujian end-to-end dApp/smart contract di Monad: scenario JSON dijalankan sebagai execution flow, hasil divisualisasikan, failure didiagnosis AI, dan report dapat disertifikasi.
 
+## Product topology
+
+Public Web: [crucible-web-omega.vercel.app](https://crucible-web-omega.vercel.app)
+adalah landing page, deterministic interactive demo, dan install/docs. Public
+Web tidak terhubung ke repository developer dan tidak mencoba mengakses
+`localhost`.
+
+Real product flow berjalan lokal dari repository yang ingin diverifikasi:
+
+```bash
+cd /path/to/your-dapp
+pnpm dlx @ohmuzakie/crucible-cli@latest connect --root .
+```
+
+`connect` menyalakan Local Web dan Local Runner pada satu origin
+`http://127.0.0.1:<port>/`; API Local Web memakai path same-origin `/api/*`.
+Execution dan state tetap lokal. Signing/private keys hanya dibaca dari
+environment runner dan tidak pernah dimasukkan ke Web atau repository.
+
 ## Quick start (clean clone)
 
 ```bash
@@ -14,17 +33,21 @@ pnpm build
 
 Tidak membutuhkan RPC, wallet, atau secret.
 
-## External repo onboarding (user flow)
+## External repo onboarding (canonical user flow)
 
 Untuk repository Foundry eksternal (target pertama: `monad-developers/scaffold-monad-foundry`):
 
 ```bash
 cd /path/to/repo
-pnpm dlx @ohmuzakie/crucible-cli@latest test
+pnpm dlx @ohmuzakie/crucible-cli@latest connect --root .
 ```
 
-- Satu command menjalankan discovery → preflight → build → fresh Anvil → scenario (jika siap).
-- `test` otomatis memakai local mode. `test --local` tetap didukung sebagai alias eksplisit.
+- Satu command menyalakan workspace lokal, mendeteksi repository dan contract,
+  lalu menyediakan journey, run, evidence, replay, dan Passport ketika
+  capability serta konfigurasi repository mendukungnya.
+- Tidak perlu menjalankan Vite, membuka Vercel, atau mengisi runner URL.
+- Local Web memakai `/api/*` same-origin. URL runner hanya untuk advanced
+  development/legacy compatibility.
 - Jika scenario belum ada, CLI menampilkan `CRUCIBLE NEEDS A BUSINESS SCENARIO` dan menyarankan `pnpm dlx @ohmuzakie/crucible-cli scenario create`.
 - `doctor` dan `init` tetap tersedia untuk diagnosis atau konfigurasi manual, bukan langkah wajib happy path.
 - Wizard memprioritaskan contract aplikasi, melewati deployment script, test, library, dan interface, lalu meminta input ABI scalar sebagai teks/angka/yes-no. JSON hanya untuk advanced flags.
@@ -39,6 +62,21 @@ pnpm dlx @ohmuzakie/crucible-cli@latest scenario create
 pnpm dlx @ohmuzakie/crucible-cli@latest test --verbose
 pnpm dlx @ohmuzakie/crucible-cli@latest web
 ```
+
+Power-user commands tetap kompatibel dan mempertahankan makna yang ada:
+
+```bash
+pnpm dlx @ohmuzakie/crucible-cli@latest detect --root .
+pnpm dlx @ohmuzakie/crucible-cli@latest doctor --root .
+pnpm dlx @ohmuzakie/crucible-cli@latest test --root .
+pnpm dlx @ohmuzakie/crucible-cli@latest scenario create --root .
+pnpm dlx @ohmuzakie/crucible-cli@latest run <scenario.json> --network local --foundry-root .
+pnpm dlx @ohmuzakie/crucible-cli@latest web --result crucible/results/latest.json
+```
+
+`test` tetap merupakan local execution command; `scenario create` membuat
+scenario dari ABI; `run` menjalankan scenario eksplisit; `web` tetap menjadi
+result viewer/legacy viewer, bukan pengganti `connect` sebagai full workspace.
 
 `web` otomatis membaca `crucible/results/latest.json`. Untuk hasil lain gunakan `web --result custom-result.json`.
 
@@ -88,7 +126,7 @@ It validates the happy/buggy scenarios, RunResult fixtures, diagnosis evidence, 
 Recommended demo order:
 
 1. `pnpm demo:check` — offline gate.
-2. `pnpm --filter @crucible/web dev` — open the fixture viewer and select Buggy mint.
+2. `pnpm --filter @crucible/web dev:public` — open the public surface and select the deterministic demo.
 3. `pnpm test` — unit, schema, certificate, and Anvil integration checks.
 4. `pnpm test:smoke:monad` — optional live testnet run with faucet-funded `.env`.
 5. GitHub Actions `Monad Smoke` — manual/nightly testnet run with repository Secrets.
@@ -101,7 +139,12 @@ The Web tries `/api/diagnose` for a configured server-side provider and falls ba
 
 ## Hosted Web (Vercel)
 
-`vercel.json` contains the monorepo build settings. When importing `myuzakie/Crucible` into Vercel, set **Root Directory** to the repository root (`.`), not `apps/web`; the root also contains `vercel.json` and the `/api/diagnose` function. Use the Vite preset, `pnpm install --frozen-lockfile`, build command `pnpm --filter @crucible/web build`, and output directory `apps/web/dist`. Vercel Git integration provides a Preview deployment for each pull request and a Production deployment from `main`; no Vercel token is stored in GitHub Actions.
+`vercel.json` contains the monorepo build settings. When importing `myuzakie/Crucible` into Vercel, set **Root Directory** to the repository root (`.`), not `apps/web`; the root also contains `vercel.json` and the `/api/diagnose` function. Use the Vite preset, `pnpm install --frozen-lockfile`, build command `pnpm --filter @crucible/web build:public`, and output directory `apps/web/dist`. Vercel Git integration provides a Preview deployment for each pull request and a Production deployment from `main`; no Vercel token is stored in GitHub Actions.
+
+The hosted root is the landing page and `/demo` is the canonical deterministic
+fixture route. It is not a local repository workspace. Public and local Web
+builds are explicit: use `build:public` for Vercel and `build:local` only for
+the CLI-bundled workspace; missing or unknown `VITE_CRUCIBLE_MODE` fails.
 
 Set `AI_API_KEY`, `AI_MODEL`, and optional `AI_API_URL` as Vercel server environment variables when live diagnosis is wanted. Do not create `VITE_*` versions of these variables. The public Web bundle is checked by `pnpm web:check` and must contain no RPC endpoint or private-key marker. Fixture diagnosis remains available if the API is not configured.
 
@@ -112,17 +155,22 @@ Do not import `.env.example` wholesale into Vercel. The Web viewer does not need
 | Mode | Command / entry | Needs secrets? |
 |---|---|---|
 | `unit` | `pnpm test` | No |
-| `local` | `pnpm crucible test` (or `test --local`) | No user keys |
-| `fixture` | `pnpm --filter @crucible/web dev` | No |
+| `local execution` | `pnpm dlx @ohmuzakie/crucible-cli@latest test` or `connect` | No user keys; runner environment only for signing |
+| `public build` | `pnpm --filter @crucible/web dev:public` / `build:public` | No |
+| `local build` | `pnpm --filter @crucible/web dev:local` / `build:local` | Runner environment only |
 | `monad-testnet` | `pnpm test:smoke:monad` | Yes (manual/nightly) |
 
 ## Fixture / offline demo
 
 ```bash
-pnpm --filter @crucible/web dev
+pnpm --filter @crucible/web dev:public
 ```
 
-Web memuat `apps/web/public/results/*.json` dan diagnosis cache. Tidak memanggil RPC dan tidak memakai private key. Fixture RunResult juga ada di `fixtures/result/`; diagnosis di `fixtures/diagnosis/`; certificate di `fixtures/certificate/`.
+Open `/` for the landing page or `/demo` for the deterministic fixture. Web
+memuat `apps/web/public/results/*.json` dan diagnosis cache. Tidak memanggil
+RPC, localhost, dan tidak memakai private key. Fixture RunResult juga ada di
+`fixtures/result/`; diagnosis di `fixtures/diagnosis/`; certificate di
+`fixtures/certificate/`.
 
 ## Local runner
 
