@@ -6,6 +6,11 @@
   direct navigation and refresh use the canonical deterministic demo route.
 - Extended `pnpm web:check` to fail if the production route contract is absent;
   no API or static-asset paths are rewritten.
+- Promoted the verified public build to Vercel production from main commit
+  `4a4fb47`; browser checks now pass for landing, direct `/demo` reload, and
+  the full deterministic replay/Passport proof.
+- The npm package remains blocked at registry version `0.2.2` until a publisher
+  authenticates and releases the M23-bundled CLI artifact.
 
 ## 2026-10-13 — Post-Merge QA Fix: Public Replay Proof
 
