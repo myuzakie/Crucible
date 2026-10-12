@@ -1128,7 +1128,7 @@ when developing locally without confusing the demo route with a real project.
 
 ## M23 — Local-First Product Topology
 
-Status: `M23.11 DONE` | Active next task: `M23.12` | Branch: `feat/m23-local-first-topology`
+Status: `M23 DONE` | Active next task: `Release Candidate / submission freeze` | Branch: `feat/m23-local-first-topology`
 
 M23 is a topology/packaging refactor only. It must not change Scenario,
 RunResult, RuntimeFinding, Replay, Passport, Monad rules, Foundry adapter, or
@@ -1331,14 +1331,18 @@ M21-D, M23.6 packaging, and M23.10 packed external acceptance all passed.
 
 #### M23.12 — Documentation and release freeze
 
-Status: `TODO` | Depends: `M23.11` | Target files: README, runtime guide,
+Status: `DONE` | Depends: `M23.11` | Target files: README, runtime guide,
 CLI README, `PLAN.md`, `CONTEXT.md`, `CHANGELOG.md`.
 
 Tests: documentation command review plus final M23 acceptance checklist and
 clean `git diff --check`.
 
 Done when: public/local topology is documented, release handoff is complete,
-M23 is frozen, and no new feature work is included.
+M23 is frozen, and no new feature work is included. README, runtime guide, and
+CLI README document the hosted landing/demo/install surface, canonical
+`connect --root .` local workspace, same-origin `/api/*`, power-user command
+compatibility, explicit public/local build modes, and the localhost/key
+security boundary. Final release gates and `git diff --check` are green.
 
 ## Perubahan fitur di kemudian hari
 

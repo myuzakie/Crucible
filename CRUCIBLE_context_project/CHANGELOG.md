@@ -1,5 +1,19 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23 Local-First Product Topology Complete
+
+- Completed the M23 topology freeze: hosted Vercel is landing + deterministic
+  `/demo` + install/docs, while `connect --root .` is the real local developer
+  workspace entrypoint.
+- Documented the bundled Local Web + Local Runner execution plane, canonical
+  same-origin `/api/*`, explicit `public`/`local` Web modes, localhost-only
+  security boundary, environment-only keys, and retained power-user CLI
+  commands.
+- Completed the final M23 release gate with packed external acceptance,
+  persistence/lifecycle/security verification, full regression, and clean
+  documentation diff. M23 is now feature-frozen; next action is Release
+  Candidate / submission freeze.
+
 ## 2026-10-13 — M23.11 Security, Persistence, and Full Regression Gate
 
 - Verified the complete M23 security boundary: Local Web binds to localhost,
