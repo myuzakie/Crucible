@@ -1,5 +1,16 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23.3 Canonical Same-Origin API Client
+
+- Added one Local Web API client whose normal mode requests relative canonical
+  `/api/*` paths for health, project, contracts, journey compilation, runs,
+  replay, diagnosis/remediation, and Passport operations.
+- Kept an explicit runner URL as a legacy/development compatibility override
+  using the existing unprefixed runner endpoints; runner serving is deferred to
+  M23.4.
+- Preserved Web retry, timeout, and response-error behavior and documented the
+  canonical API contract without changing runner or core verification semantics.
+
 ## 2026-10-12 — M23.2 Public/Local Web Surface Split
 
 - Added explicit entry-surface selection from the frozen Web build mode:

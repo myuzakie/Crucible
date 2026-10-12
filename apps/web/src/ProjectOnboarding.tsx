@@ -6,6 +6,7 @@ import type { Diagnosis, RuntimeRemediation } from '@crucible/ai';
 import type { RuntimeReplaySummary } from '@crucible/core';
 import { Activity, Box, Bug, CheckCircle2, ChevronRight, CircleHelp, Code2, ExternalLink, LayoutDashboard, Play, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { RuntimeFlow } from './RuntimeFlow.js';
+import { createRunnerApiClient } from './runner-api.js';
 
 type SavedProject = { id: string; name: string; runnerUrl: string; connectedAt?: string };
 type RuntimePassport = { passportId: string; passportHash: string; verificationProfile: string; suiteVersion: string; onChain?: { chainId: number; registryAddress: string; transactionHash: string } };
@@ -18,7 +19,7 @@ function loadProjects(): SavedProject[] {
 export function ProjectOnboarding() {
   const [projects, setProjects] = useState<SavedProject[]>(loadProjects);
   const [name, setName] = useState('');
-  const [runnerUrl, setRunnerUrl] = useState('http://127.0.0.1:8787');
+  const [runnerUrl, setRunnerUrl] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [copyStatus, setCopyStatus] = useState('');
   const [snapshot, setSnapshot] = useState<ProjectSnapshot | null>(null);
@@ -69,16 +70,17 @@ export function ProjectOnboarding() {
     window.setTimeout(() => setCopyStatus(''), 2200);
   }
 
-  async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+  function apiClient(url = runnerUrl) {
+    return createRunnerApiClient({ baseUrl: url || undefined });
+  }
+
+  async function requestJson<T>(path: string, init?: RequestInit, url = runnerUrl): Promise<T> {
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), 10000);
       try {
-        const response = await fetch(url, { ...init, signal: controller.signal });
-        const payload = await response.json() as T & { error?: string; message?: string };
-        if (!response.ok) throw new Error(payload.message ?? payload.error ?? `Runner returned ${response.status}.`);
-        return payload;
+        return await apiClient(url).requestJson<T>(path, { ...init, signal: controller.signal });
       } catch (error) {
         lastError = error;
         if (attempt === 0) await new Promise((resolve) => window.setTimeout(resolve, 250));
@@ -88,15 +90,15 @@ export function ProjectOnboarding() {
   }
 
   async function connect(url = runnerUrl, projectName = name) {
-    setBusy(true); setStatus('Connecting to the local runner…');
+    setBusy(true); setStatus('Connecting to the local workspace API…');
     try {
-      const base = url.replace(/\/$/, '');
-      await requestJson(`${base}/health`);
-      const next = await requestJson<ProjectSnapshot>(`${base}/project`);
+      await requestJson('/health', undefined, url);
+      const next = await requestJson<ProjectSnapshot>('/project', undefined, url);
       setSnapshot(next); setStatus(`Connected. Detected ${next.project.name}.`);
-      const project = { id: `${base}:${next.project.root}`, name: projectName.trim() || next.project.name, runnerUrl: base, connectedAt: new Date().toISOString() };
+      const base = url.trim().replace(/\/$/, '');
+      const project = { id: `${base || 'same-origin'}:${next.project.root}`, name: projectName.trim() || next.project.name, runnerUrl: base, connectedAt: new Date().toISOString() };
       save([project, ...projects.filter((item) => item.id !== project.id)]);
-      const state = await requestJson<{ passport?: RuntimePassport; replay?: RuntimeReplaySummary; beforeRun?: RunResult; afterRun?: RunResult }>(`${base}/state`);
+      const state = await requestJson<{ passport?: RuntimePassport; replay?: RuntimeReplaySummary; beforeRun?: RunResult; afterRun?: RunResult }>('/state', undefined, url);
       if (state.passport) setPassport(state.passport);
       if (state.replay) setReplay(state.replay);
       if (state.beforeRun) setBeforeRun(state.beforeRun);
@@ -108,7 +110,7 @@ export function ProjectOnboarding() {
   async function compile() {
     setBusy(true); setStatus('Compiling the journey against the detected ABI…');
     try {
-      const payload = await requestJson<{ scenario?: Scenario }>(`${runnerUrl.replace(/\/$/, '')}/journeys/compile`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: name.trim() || 'manual-journey', contract, constructorArgs: constructorArgs ? constructorArgs.split(',').map((item) => item.trim()) : [], call, assertion, callArgs: callArgs ? callArgs.split(',').map((item) => item.trim()) : [], assertionArgs: assertionArgs ? assertionArgs.split(',').map((item) => item.trim()) : [], expected: expected || undefined, source: sourceFile ? { file: sourceFile } : undefined }) });
+      const payload = await requestJson<{ scenario?: Scenario }>('/journeys/compile', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: name.trim() || 'manual-journey', contract, constructorArgs: constructorArgs ? constructorArgs.split(',').map((item) => item.trim()) : [], call, assertion, callArgs: callArgs ? callArgs.split(',').map((item) => item.trim()) : [], assertionArgs: assertionArgs ? assertionArgs.split(',').map((item) => item.trim()) : [], expected: expected || undefined, source: sourceFile ? { file: sourceFile } : undefined }) });
       if (!payload.scenario) throw new Error('Journey compiler returned no scenario.');
       setCompiled(payload.scenario); setRunResult(null); setStatus('Journey compiled and validated.');
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Unable to compile journey.'); }
@@ -119,23 +121,23 @@ export function ProjectOnboarding() {
     if (!compiled) return;
     setBusy(true); setStatus(runMode === 'local' ? 'Running local verification on a fresh Anvil chain…' : 'Running guarded Monad Testnet preflight…');
     try {
-      const payload = await requestJson<{ result?: RunResult }>(`${runnerUrl.replace(/\/$/, '')}/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: runMode, confirmed: confirmTestnet, scenario: compiled }) });
+      const payload = await requestJson<{ result?: RunResult }>('/runs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: runMode, confirmed: confirmTestnet, scenario: compiled }) });
       if (!payload.result) throw new Error('Runner returned no result.');
       const next = payload.result;
       if (next.status === 'failed' && !beforeRun) setBeforeRun(next);
       setRunResult(next); setSelectedNode(next.nodes[0]?.id ?? ''); setStatus(next.status === 'passed' ? 'Verification passed.' : 'Verification finished with findings.');
       if (next.status === 'failed') {
-        const diagnosisPayload = await requestJson<{ diagnosis?: Diagnosis }>(`${runnerUrl.replace(/\/$/, '')}/diagnose`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ runResult: next, scenario: compiled }) });
+        const diagnosisPayload = await requestJson<{ diagnosis?: Diagnosis }>('/diagnose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ runResult: next, scenario: compiled }) });
         if (diagnosisPayload.diagnosis) {
           setDiagnosis(diagnosisPayload.diagnosis);
           const finding = next.runtimeVerification?.findings.find((item) => item.status === 'failed');
           if (finding) {
-            const remediationPayload = await requestJson<{ remediation?: RuntimeRemediation }>(`${runnerUrl.replace(/\/$/, '')}/remediate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ finding, scenario: compiled }) });
+            const remediationPayload = await requestJson<{ remediation?: RuntimeRemediation }>('/remediate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ finding, scenario: compiled }) });
             if (remediationPayload.remediation) setRemediation(remediationPayload.remediation);
           }
         }
       } else if (beforeRun?.status === 'failed') {
-        const replayPayload = await requestJson<RuntimeReplaySummary>(`${runnerUrl.replace(/\/$/, '')}/replay`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun: next, scenario: compiled }) });
+        const replayPayload = await requestJson<RuntimeReplaySummary>('/replay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun: next, scenario: compiled }) });
         setReplay(replayPayload);
       }
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Unable to run verification.'); }
@@ -146,7 +148,7 @@ export function ProjectOnboarding() {
     if (!beforeRun || !runResult || !compiled || runResult.status !== 'passed') return;
     setBusy(true); setStatus('Generating the signed Passport in the local runner…');
     try {
-      const payload = await requestJson<{ passport: RuntimePassport }>(`${runnerUrl.replace(/\/$/, '')}/passport`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun: runResult, scenario: compiled }) });
+      const payload = await requestJson<{ passport: RuntimePassport }>('/passport', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ beforeRun, afterRun: runResult, scenario: compiled }) });
       setPassport(payload.passport); setStatus(`Passport ready: ${payload.passport.passportHash}`);
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Passport generation failed.'); }
     finally { setBusy(false); }
@@ -156,7 +158,7 @@ export function ProjectOnboarding() {
     if (!passport || !registry) return;
     setBusy(true); setStatus('Publishing Passport through the local runner…');
     try {
-      const payload = await requestJson<{ passport: RuntimePassport }>(`${runnerUrl.replace(/\/$/, '')}/passport/publish`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ passport, registry }) });
+      const payload = await requestJson<{ passport: RuntimePassport }>('/passport/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ passport, registry }) });
       setPassport(payload.passport); setStatus(`Passport published: ${payload.passport.onChain?.transactionHash ?? 'transaction confirmed'}`);
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Passport publish failed.'); }
     finally { setBusy(false); }

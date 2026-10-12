@@ -38,9 +38,10 @@ di-scope ke satu root repository.
    pnpm dlx @ohmuzakie/crucible-cli@latest connect --root .
    ```
 
-2. Jalankan Web, lalu buka halaman Projects.
-3. URL runner default adalah `http://127.0.0.1:8787`; gunakan **Advanced
-   settings** hanya jika runner memakai port atau host lain.
+2. Jalankan Local Web dengan explicit `VITE_CRUCIBLE_MODE=local`, lalu buka
+   halaman workspace.
+3. Normal Local Web memakai API same-origin `/api/*`; URL runner hanya diisi
+   melalui **Advanced settings** untuk development/legacy compatibility.
 4. Isi nama project, lalu klik **Connect & detect repository**.
 5. Baca status toolchain, jumlah artifact, scenario, dan next step pada panel
    **Repository detection**.
@@ -64,10 +65,14 @@ root Foundry atau direktori state yang keluar melalui symlink. Jangan memakai
 `--host 0.0.0.0` kecuali ada network boundary dan allowlist yang benar-benar
 terkontrol.
 
-Endpoint runner M21-A bersifat read-only: `/health`, `/project`, dan
-`/contracts`. Jika status
-menunjukkan `MISSING_ARTIFACT`, jalankan `forge build` di repository target,
-lalu reconnect. Jika `UNSUPPORTED_TOOLCHAIN`, repository belum memiliki
+Canonical Local Web paths adalah `/api/health`, `/api/project`,
+`/api/contracts`, `/api/journeys/compile`, `/api/runs`, `/api/replay`,
+`/api/passport`, `/api/passport/publish`, `/api/diagnose`, dan
+`/api/remediate`. Runner M21-A masih mempertahankan endpoint tanpa prefix
+sebagai compatibility surface untuk explicit development/legacy URL sampai
+local workspace server M23.4 tersedia. Jika status menunjukkan
+`MISSING_ARTIFACT`, jalankan `forge build` di repository target, lalu
+reconnect. Jika `UNSUPPORTED_TOOLCHAIN`, repository belum memiliki
 `foundry.toml` yang didukung adapter saat ini.
 
 ### M21-B: Compile dan run journey

@@ -1200,14 +1200,17 @@ local reuse of `ProjectOnboarding`, and preserved public fixture query access.
 
 #### M23.3 — Canonical same-origin `/api/*`
 
-Status: `TODO` | Depends: `M23.2` | Target files: Local Web request layer,
+Status: `DONE` | Depends: `M23.2` | Target files: Local Web request layer,
 `packages/cli/src/connect.ts`, runner tests, docs.
 
 Tests: Local Web uses `/api/*`; canonical health/project/run/replay/Passport
 requests work; legacy compatibility is covered if retained.
 
 Done when: no normal Local Web flow depends on a configurable runner URL or
-hosted-Web-to-localhost CORS.
+hosted-Web-to-localhost CORS. Implemented a single relative `/api/*` client,
+kept explicit runner URLs as legacy/dev compatibility, preserved retry/error
+behavior, and documented the canonical paths without changing runner or core
+semantics. Static local API serving remains M23.4 scope.
 
 #### M23.4 — Local workspace server
 

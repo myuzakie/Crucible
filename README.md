@@ -101,7 +101,7 @@ The Web tries `/api/diagnose` for a configured server-side provider and falls ba
 
 ## Hosted Web (Vercel)
 
-`vercel.json` contains the monorepo build settings. When importing `myuzakie/Crucible` into Vercel, set **Root Directory** to the repository root (`.`), not `apps/web`; the root also contains `vercel.json` and the `/api/diagnose` function. Use the Vite preset, `pnpm install --frozen-lockfile`, build command `pnpm --filter @crucible/web build`, and output directory `apps/web/dist`. Vercel Git integration provides a Preview deployment for each pull request and a Production deployment from `main`; no Vercel token is stored in GitHub Actions.
+`vercel.json` contains the monorepo build settings. When importing `myuzakie/Crucible` into Vercel, set **Root Directory** to the repository root (`.`), not `apps/web`; the root also contains `vercel.json` and the `/api/diagnose` function. Use the Vite preset, `pnpm install --frozen-lockfile`, build command `pnpm --filter @crucible/web build:public`, and output directory `apps/web/dist`. Vercel Git integration provides a Preview deployment for each pull request and a Production deployment from `main`; no Vercel token is stored in GitHub Actions.
 
 Set `AI_API_KEY`, `AI_MODEL`, and optional `AI_API_URL` as Vercel server environment variables when live diagnosis is wanted. Do not create `VITE_*` versions of these variables. The public Web bundle is checked by `pnpm web:check` and must contain no RPC endpoint or private-key marker. Fixture diagnosis remains available if the API is not configured.
 
