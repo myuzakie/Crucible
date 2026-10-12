@@ -22,6 +22,12 @@ async function main() {
     const content = await readFile(file, 'utf8');
     if (forbidden.test(content)) throw new Error(`Web build memuat secret marker: ${file}`);
   }
+  const vercel = JSON.parse(await readFile(resolve('vercel.json'), 'utf8')) as {
+    rewrites?: Array<{ source?: string; destination?: string }>;
+  };
+  if (!vercel.rewrites?.some((rewrite) => rewrite.source === '/demo' && rewrite.destination === '/index.html')) {
+    throw new Error('Vercel config harus me-rewrite /demo ke /index.html untuk direct route reload.');
+  }
   console.log(`WEB BUILD: PASSED (${files.length} files, no RPC/private-key markers)`);
 }
 
