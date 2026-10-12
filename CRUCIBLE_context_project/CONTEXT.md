@@ -5,9 +5,9 @@ Last updated: 2026-10-12
 
 ## Agent resume state
 
-Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0`.
+Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0, M23.1`.
 Last merged to `main`: P9.5 release `9cfcf17`; P9.4 release `332cd24`; P9.3 release `5bb15d0`.
-Next action: `M23.1` — implement explicit `public`/`local` Web build modes with invalid-mode failure; never use a personal wallet or paste keys into chat.
+Next action: `M23.2` — split `PublicApp` and `LocalWorkspace`; never use a personal wallet or paste keys into chat.
 Current local environment: Node 24, pnpm 12.4.1, TypeScript, Zod, Foundry 1.8.5; root checks, `forge build/test`, and Anvil integration pass. Ensure `~/.foundry/bin` is on `PATH` for local Anvil tests.
 Blockchain tools: Foundry, forge, cast, and Anvil are installed. Local runner uses `http://127.0.0.1:8545` by default or `--rpc`/`LOCAL_RPC_URL`. `crucible test --local` spawns a fresh Anvil on an ephemeral port and kills it on exit.
 Memory rule: after every task update `PLAN.md`, `CHANGELOG.md`, and `FIX_LOG.md` when a bug or process miss occurred.
@@ -52,8 +52,11 @@ Local Web         -> actual developer workspace on the same localhost origin
                     http://127.0.0.1:<port>/api/*
 ```
 
-M23.0 is complete. The next active task is M23.1. Local signing/private keys
-remain environment-only, and the local workspace remains localhost-only.
+M23.0 and M23.1 are complete. The next active task is M23.2. Web builds now
+require explicit `VITE_CRUCIBLE_MODE=public` or `VITE_CRUCIBLE_MODE=local`;
+missing and unknown values fail during Vite build/dev configuration loading.
+Local signing/private keys remain environment-only, and the local workspace
+remains localhost-only.
 
 AI state: `packages/ai` defines `DiagnosisRequestSchema`, `DiagnosisSchema`, and exact evidence validation against `RunResult`. `fixtures/diagnosis/buggy-mint.json` and `apps/web/public/diagnosis/buggy-mint.json` are deterministic offline cache. Web keeps the RunResult visible when diagnosis is unavailable.
 

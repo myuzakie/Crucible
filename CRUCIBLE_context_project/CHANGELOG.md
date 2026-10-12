@@ -1,5 +1,15 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-12 — M23.1 Explicit Web Build Modes
+
+- Added strict `VITE_CRUCIBLE_MODE` validation for `public` and `local` Web
+  builds and dev startup; missing, empty, and unknown values fail clearly.
+- Added explicit `build:public`, `build:local`, `dev:public`, and `dev:local`
+  Web commands, with the root production build and Vercel configured for the
+  public mode.
+- Added unit coverage and a build matrix covering public/local acceptance and
+  missing/invalid rejection without changing core verification contracts.
+
 ## 2026-10-12 — M23.0 Local-First Product Topology
 
 - Froze hosted Vercel as the public landing, deterministic interactive demo,

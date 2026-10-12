@@ -1173,14 +1173,17 @@ Context points to M23.1; no application code changes are made.
 
 #### M23.1 — Explicit public/local build modes
 
-Status: `TODO` | Depends: `M23.0` | Target files: `apps/web`, Vite/build
+Status: `DONE` | Depends: `M23.0` | Target files: `apps/web`, Vite/build
 configuration, Web tests, deployment checks, README as needed.
 
 Tests: Web build for `public`; Web build for `local`; invalid/missing mode
 fails; existing typecheck and Web security check.
 
 Done when: public and local builds select explicit behavior and unknown or
-missing mode exits non-zero without fallback.
+missing mode exits non-zero without fallback. Implemented with a strict
+`VITE_CRUCIBLE_MODE` parser, Vite config validation for build/dev, explicit
+public/local Web scripts, Vercel public build selection, and a four-case build
+matrix check.
 
 #### M23.2 — Split PublicApp and LocalWorkspace
 
