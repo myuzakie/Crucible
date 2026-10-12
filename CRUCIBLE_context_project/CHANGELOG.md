@@ -1,5 +1,16 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23.4 Local Workspace Server Abstraction
+
+- Extracted the runner API handler from `connect.ts` without changing runner
+  verification behavior or core semantics; canonical `/api/*` and legacy paths
+  are handled by the same API boundary.
+- Added a localhost-only workspace server that composes the API handler with a
+  separate static Web handler for `/` and `/assets/*`.
+- Added traversal/symlink guards, unknown API 404 behavior, localhost bind
+  coverage, and clean shutdown tests. Production Web bundling and `connect`
+  lifecycle remain later M23 tasks.
+
 ## 2026-10-13 — M23.3 Canonical Same-Origin API Client
 
 - Added one Local Web API client whose normal mode requests relative canonical

@@ -1214,14 +1214,17 @@ semantics. Static local API serving remains M23.4 scope.
 
 #### M23.4 — Local workspace server
 
-Status: `TODO` | Depends: `M23.3` | Target files: `packages/cli/src/`, server
-unit/integration tests.
+Status: `DONE` | Depends: `M23.3` | Target files: `packages/cli/src/runner-api-handler.ts`,
+`static-handler.ts`, `workspace-server.ts`, `connect.ts`, server tests.
 
-Tests: API handler tests; server binds localhost-only; `/api/health` works;
-path/symlink/security guards remain green.
+Tests: server-level coverage for localhost-only binding, root/static handling,
+`/api/health`, unknown API 404, traversal/symlink safety, and clean shutdown;
+relevant runner/web tests, lint, and typecheck.
 
 Done when: runner API handler, static handler boundary, and workspace server
-are separate responsibilities without changing runner semantics.
+are separate responsibilities without changing runner verification semantics.
+Implemented the minimum local workspace composition; production Web bundling
+and `connect` lifecycle remain M23.5–M23.8 scope.
 
 #### M23.5 — Serve Local Web from workspace server
 
