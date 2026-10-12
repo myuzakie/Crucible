@@ -1,5 +1,15 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23.10 Packed External Repository Acceptance
+
+- Added `pnpm m23.10:check`, which packs and installs the CLI in a clean
+  temporary external Foundry repository rather than using workspace links.
+- Verified packed `connect --root .`, bundled Local Web root, same-origin
+  `/api/health`, project/contracts discovery, local run/evidence, persisted
+  non-secret state, and clean shutdown.
+- Verified actionable `MISSING_SCENARIO` and `UNSUPPORTED_TOOLCHAIN` results,
+  raw-error suppression, and package/tarball hygiene.
+
 ## 2026-10-13 — M23.9 Public Landing and `/demo`
 
 - Replaced the public placeholder with a landing page covering the Crucible

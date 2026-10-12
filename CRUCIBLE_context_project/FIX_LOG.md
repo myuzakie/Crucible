@@ -16,6 +16,22 @@ Regression test:
 Status: open | fixed | verified
 ```
 
+## FIX-027 — Packed acceptance JSON included exec failure text
+
+Date: 2026-10-13
+Task: M23.10
+Symptom: The new packed external acceptance stopped while parsing a structured
+non-zero CLI result because `execFileSync` appended its failure message after
+the JSON payload.
+Root cause: the acceptance helper parsed the complete combined stdout/stderr
+and child-process error string as one JSON document.
+Fix: parse the JSON object boundary before the appended process error while
+still retaining the complete output for raw-error assertions.
+Files: `scripts/m23-external-acceptance.ts`.
+Regression test: `pnpm m23.10:check` passes the missing-scenario and unsupported
+toolchain external cases from a fresh temporary directory.
+Status: `fixed; verified`
+
 ## FIX-026 — Unknown canonical API paths returned the wrong status
 
 Date: 2026-10-13  

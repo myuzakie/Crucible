@@ -5,9 +5,9 @@ Last updated: 2026-10-13
 
 ## Agent resume state
 
-Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, M23.7, M23.8, M23.9`.
+Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, M23.7, M23.8, M23.9, M23.10`.
 Last merged to `main`: P9.5 release `9cfcf17`; P9.4 release `332cd24`; P9.3 release `5bb15d0`.
-Next action: `M23.10` — packed external repository acceptance; never use a personal wallet or paste keys into chat.
+Next action: `M23.11` — security, persistence, and full regression release gate; never use a personal wallet or paste keys into chat.
 Current local environment: Node 24, pnpm 12.4.1, TypeScript, Zod, Foundry 1.8.5; root checks, `forge build/test`, and Anvil integration pass. Ensure `~/.foundry/bin` is on `PATH` for local Anvil tests.
 Blockchain tools: Foundry, forge, cast, and Anvil are installed. Local runner uses `http://127.0.0.1:8545` by default or `--rpc`/`LOCAL_RPC_URL`. `crucible test --local` spawns a fresh Anvil on an ephemeral port and kills it on exit.
 Memory rule: after every task update `PLAN.md`, `CHANGELOG.md`, and `FIX_LOG.md` when a bug or process miss occurred.
@@ -56,7 +56,7 @@ Local Web         -> actual developer workspace on the same localhost origin
                     http://127.0.0.1:<port>/api/*
 ```
 
-M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, M23.7, M23.8, and M23.9 are complete. The next active task is M23.10. Web builds now
+M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, M23.7, M23.8, M23.9, and M23.10 are complete. The next active task is M23.11. Web builds now
 require explicit `VITE_CRUCIBLE_MODE=public` or `VITE_CRUCIBLE_MODE=local`;
 missing and unknown values fail during Vite build/dev configuration loading.
 Public builds select a minimal `PublicApp` surface, while local builds reuse
@@ -81,6 +81,13 @@ platform-safe browser open, falls back to the manual URL, and releases the
 port cleanly on SIGINT/SIGTERM.
 Local signing/private keys remain environment-only, and the local workspace
 remains localhost-only.
+
+M23.10 external acceptance state: a real packed CLI installed in a clean
+temporary external Foundry repository, started `connect --root .`, served the
+bundled Local Web, exposed same-origin `/api/*`, detected the external Token
+contract, ran a local scenario with evidence, persisted non-secret run state,
+and shut down cleanly. Missing-scenario and Hardhat/unsupported-toolchain
+flows returned actionable structured statuses without raw filesystem errors.
 
 AI state: `packages/ai` defines `DiagnosisRequestSchema`, `DiagnosisSchema`, and exact evidence validation against `RunResult`. `fixtures/diagnosis/buggy-mint.json` and `apps/web/public/diagnosis/buggy-mint.json` are deterministic offline cache. Web keeps the RunResult visible when diagnosis is unavailable.
 

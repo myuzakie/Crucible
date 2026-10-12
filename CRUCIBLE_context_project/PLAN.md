@@ -1296,7 +1296,7 @@ Local Web and verification semantics are unchanged.
 
 #### M23.10 — Packed external repository acceptance
 
-Status: `TODO` | Depends: `M23.6`, `M23.7`, `M23.8` | Target files:
+Status: `DONE` | Depends: `M23.6`, `M23.7`, `M23.8` | Target files:
 `scripts/`, package acceptance tests, fixtures, docs.
 
 Tests: fresh external repository plus packed CLI; connect, browser/local URL,
@@ -1304,7 +1304,10 @@ detection, contract view, journey, and run; no manual Vite, Vercel, or runner
 URL configuration.
 
 Done when: the packed CLI works outside the monorepo through the real developer
-flow.
+flow. Implemented `m23.10:check` using a packed tarball and clean temporary
+Foundry repository; it verifies `connect`, bundled Web, canonical API,
+repository/contract discovery, local run/evidence, missing-scenario guidance,
+unsupported-toolchain guidance, tarball hygiene, and clean shutdown.
 
 #### M23.11 — Security, persistence, and full regression
 
