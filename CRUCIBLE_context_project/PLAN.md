@@ -1255,14 +1255,16 @@ export, and real tarball install/serve acceptance from an external directory.
 
 #### M23.7 — Upgrade `crucible connect`
 
-Status: `TODO` | Depends: `M23.6` | Target files: `packages/cli/src/index.ts`,
-local workspace server, CLI tests, usage docs.
+Status: `DONE` | Depends: `M23.6` | Target files: `packages/cli/src/index.ts`,
+`packages/cli/src/connect-command.test.ts`, local workspace server, usage docs.
 
 Tests: `connect --root .` detects repository, starts the local workspace, keeps
 the process alive, and reports the workspace URL.
 
 Done when: `connect` starts runner + Local Web as the canonical interactive
-entrypoint without requiring Vite or a second terminal.
+entrypoint without requiring Vite or a second terminal. Implemented bundled
+workspace startup, repository/status reporting, same-origin API availability,
+and a persistent process lifecycle without browser auto-open.
 
 #### M23.8 — Browser auto-open and shutdown lifecycle
 

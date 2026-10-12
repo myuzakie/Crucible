@@ -37,7 +37,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 
 import { isLocalTestCommand, localTestUsage } from './command-contract.js';
 import { startWebViewer } from './web.js';
-import { startLocalRunner } from './connect.js';
+import { startLocalWorkspaceServer } from './workspace-server.js';
 import { formatTestnetResult, runMonadTestnetTest } from './testnet.js';
 import { isInteractive, printError, printHome, printPanel, printUrl, printUsage, readVersion, runInteractiveHome, startSpinner } from './ui.js';
 
@@ -282,14 +282,15 @@ try {
     const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
     const port = Number(flag(rest, '--port', '8787'));
     if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid --port. Use a number between 0 and 65535.');
-    const runner = await startLocalRunner({ root, name: rest.includes('--name') ? flag(rest, '--name') : undefined, host: rest.includes('--host') ? flag(rest, '--host') : undefined, port });
-    printPanel('CRUCIBLE LOCAL RUNNER', [
-      ['URL', runner.url],
-      ['Repository', runner.snapshot.project.root],
-      ['Status', runner.snapshot.detection.status],
-      ['Next', 'Connect this URL from the Crucible Web project screen.']
+    const workspace = await startLocalWorkspaceServer({ root, name: rest.includes('--name') ? flag(rest, '--name') : undefined, host: rest.includes('--host') ? flag(rest, '--host') : undefined, port });
+    printPanel('CRUCIBLE LOCAL WORKSPACE', [
+      ['URL', workspace.url],
+      ['Repository', workspace.snapshot.project.root],
+      ['Status', workspace.snapshot.detection.status],
+      ['Next', 'Open this URL in your browser.'],
+      ['Shutdown', 'Press Ctrl+C to stop the workspace.']
     ]);
-    const stop = async () => { await runner.close(); process.exit(0); };
+    const stop = async () => { await workspace.close(); process.exit(0); };
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
     await new Promise<void>(() => undefined);

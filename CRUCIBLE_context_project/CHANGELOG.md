@@ -1,5 +1,15 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23.7 Canonical `crucible connect`
+
+- Upgraded `connect --root .` to start the bundled Local Web workspace and
+  runner API on one localhost origin without requiring Vite or a second
+  terminal.
+- Added concise repository, detected status, workspace URL, and Ctrl+C
+  shutdown output while preserving existing CLI command meanings.
+- Added process-level acceptance for root, `/api/health`, and `/api/project`;
+  browser auto-open remains M23.8 scope.
+
 ## 2026-10-13 — M23.6 Bundle Local Web into CLI Package
 
 - Added a package build step that always builds Web with explicit

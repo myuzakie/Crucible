@@ -38,8 +38,9 @@ di-scope ke satu root repository.
    pnpm dlx @ohmuzakie/crucible-cli@latest connect --root .
    ```
 
-2. Jalankan Local Web dengan explicit `VITE_CRUCIBLE_MODE=local`, lalu buka
-   halaman workspace.
+2. `connect` otomatis menjalankan bundled Local Web dengan mode `local` dan
+   mencetak URL workspace. Buka URL tersebut; tidak perlu menjalankan Vite
+   atau terminal kedua.
 3. Normal Local Web memakai API same-origin `/api/*`; URL runner hanya diisi
    melalui **Advanced settings** untuk development/legacy compatibility.
 4. Isi nama project, lalu klik **Connect & detect repository**.
@@ -69,8 +70,7 @@ Canonical Local Web paths adalah `/api/health`, `/api/project`,
 `/api/contracts`, `/api/journeys/compile`, `/api/runs`, `/api/replay`,
 `/api/passport`, `/api/passport/publish`, `/api/diagnose`, dan
 `/api/remediate`. Runner M21-A masih mempertahankan endpoint tanpa prefix
-sebagai compatibility surface untuk explicit development/legacy URL sampai
-local workspace server M23.4 tersedia. Jika status menunjukkan
+sebagai compatibility surface untuk explicit development/legacy URL. Jika status menunjukkan
 `MISSING_ARTIFACT`, jalankan `forge build` di repository target, lalu
 reconnect. Jika `UNSUPPORTED_TOOLCHAIN`, repository belum memiliki
 `foundry.toml` yang didukung adapter saat ini.
