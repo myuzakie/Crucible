@@ -117,6 +117,11 @@ detected but unsupported by the current Foundry adapter, live Monad execution
 requires explicit environment configuration, and Passport publishing is not
 the public hosted critical path.
 
+Post-merge QA fix state: `FIX-030` is verified. The public fixed deterministic
+fixture now includes the existing runtime-verified replay summary, and
+`pnpm demo:check` asserts the before/after linkage so the public demo visibly
+completes through Runtime Verified and Passport eligibility.
+
 AI state: `packages/ai` defines `DiagnosisRequestSchema`, `DiagnosisSchema`, and exact evidence validation against `RunResult`. `fixtures/diagnosis/buggy-mint.json` and `apps/web/public/diagnosis/buggy-mint.json` are deterministic offline cache. Web keeps the RunResult visible when diagnosis is unavailable.
 
 Certificate state: `@crucible/certificate` hashes Scenario + RunResult + Diagnosis, signs with ed25519, verifies offline, and exports the registry ABI. CLI: `pnpm crucible certify|verify|publish`; `publish` verifies first, checks chain ID, and adds optional on-chain transaction metadata without private keys. Registry has fresh-Anvil CI coverage; Monad publication is opt-in/manual.

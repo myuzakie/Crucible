@@ -16,6 +16,24 @@ Regression test:
 Status: open | fixed | verified
 ```
 
+## FIX-030 — Public fixed demo omitted verified replay proof
+
+Date: 2026-10-13
+Task: M23.9 QA
+Symptom: The public deterministic demo could show the fixed RunResult and
+Passport eligibility, but the UI did not render the explicit verified replay
+proof because the fixed fixture lacked `verifiedReplay`.
+Root cause: the before fixture carried the replay summary while the after
+fixture did not, even though the public flow promises failure → fix → replay →
+Runtime Passport.
+Fix: add the existing runtime-verified replay summary to the fixed public
+fixture and make `demo:check` assert the before/after linkage.
+Files: `apps/web/public/results/monad-runtime-fixed.json`,
+`scripts/demo-check.ts`.
+Regression test: `pnpm demo:check` plus browser verification of the public
+fixed fixture rendering `STEP 6 / VERIFIED REPLAY` and `Runtime Verified`.
+Status: `fixed; verified`
+
 ## FIX-027 — Packed acceptance JSON included exec failure text
 
 Date: 2026-10-13

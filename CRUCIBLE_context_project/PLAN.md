@@ -1291,8 +1291,10 @@ Done when: Public flow is Landing → Demo → Install/Docs and clearly labels t
 demo as deterministic fixture execution. Implemented the public landing and
 install/docs CTAs, canonical `/demo` routing with legacy query compatibility,
 explicit deterministic-fixture/no-repository framing, and browser-verified
-public root/demo behavior. Public runtime uses only relative fixture/API paths;
-Local Web and verification semantics are unchanged.
+public root/demo behavior. The fixed public fixture carries the existing
+runtime-verified before/after replay summary so the UI renders the complete
+failure → remediation → replay → Passport proof. Public runtime uses only
+relative fixture/API paths; Local Web and verification semantics are unchanged.
 
 #### M23.10 — Packed external repository acceptance
 

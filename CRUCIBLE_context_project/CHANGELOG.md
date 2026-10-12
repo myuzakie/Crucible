@@ -1,5 +1,13 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — Post-Merge QA Fix: Public Replay Proof
+
+- Added the existing runtime-verified before/after replay summary to the fixed
+  public deterministic fixture so `/demo` visibly completes failure → fix →
+  replay → Runtime Passport.
+- Added a `demo:check` assertion for replay linkage; `FIX-030` is fixed and
+  verified. No core verification semantics changed.
+
 ## 2026-10-13 — M23 Local-First Product Topology Complete
 
 - Completed the M23 topology freeze: hosted Vercel is landing + deterministic

@@ -16,6 +16,8 @@ async function main() {
   const buggyScenario = ScenarioSchema.parse(await json('examples/monad-erc20-demo/scenarios/buggy-mint.json'));
   const happyResult = RunResultSchema.parse(await json('fixtures/result/happy-path.json'));
   const buggyResult = RunResultSchema.parse(await json('fixtures/result/buggy-mint.json'));
+  const publicBefore = RunResultSchema.parse(await json('apps/web/public/results/monad-runtime-vulnerable.json'));
+  const publicAfter = RunResultSchema.parse(await json('apps/web/public/results/monad-runtime-fixed.json'));
   const diagnosis = validateDiagnosisForResult(await json('fixtures/diagnosis/buggy-mint.json'), buggyResult);
   const certificate = verifyCertificate(await json('fixtures/certificate/buggy-mint.json'));
 
@@ -24,6 +26,9 @@ async function main() {
   }
   if (certificate.runResult.runId !== buggyResult.runId || diagnosis.runId !== buggyResult.runId) {
     throw new Error('Diagnosis, certificate, and RunResult fixture IDs do not match.');
+  }
+  if (publicBefore.verifiedReplay?.status !== 'runtime-verified' || publicBefore.verifiedReplay.afterRunId !== publicAfter.runId || publicAfter.verifiedReplay?.status !== 'runtime-verified') {
+    throw new Error('Public demo fixtures do not expose a verified before/after replay.');
   }
 
   for (const path of [
