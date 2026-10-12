@@ -1,5 +1,16 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-12 — M23.2 Public/Local Web Surface Split
+
+- Added explicit entry-surface selection from the frozen Web build mode:
+  `public` renders `PublicApp`, while `local` reuses the existing
+  `ProjectOnboarding` workspace.
+- Kept the public fixture query available as a transition path for the future
+  `/demo` work in M23.9; no verification, journey, replay, or Passport logic
+  was changed.
+- Added regression coverage for public/local surface selection and preserved
+  the M23.1 build-mode contract.
+
 ## 2026-10-12 — M23.1 Explicit Web Build Modes
 
 - Added strict `VITE_CRUCIBLE_MODE` validation for `public` and `local` Web

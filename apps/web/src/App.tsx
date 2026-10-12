@@ -4,6 +4,8 @@ import { validateDiagnosisForResult, type Diagnosis } from '@crucible/ai';
 import { findingsForJourney, replaySequence, runtimeFindings, runtimeJourneys, validateResult, type RunResult } from './viewer.js';
 import { RuntimeFlow } from './RuntimeFlow.js';
 import { ProjectOnboarding } from './ProjectOnboarding.js';
+import { PublicApp } from './PublicApp.js';
+import { selectAppSurface } from './app-surface.js';
 import { AlertCircle, Bug, FolderGit2, History, LayoutDashboard, ShieldCheck } from 'lucide-react';
 
 const fixtures = [
@@ -24,7 +26,7 @@ const journeyMeta: Record<string, { title: string; flow: string; description: st
 
 const debugMode = new URLSearchParams(window.location.search).get('debug') === '1';
 const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
-const projectMode = !debugMode && !demoMode;
+const appSurface = selectAppSurface(__CRUCIBLE_BUILD_MODE__, debugMode || demoMode);
 
 function journeyLabel(id: string) { return journeyMeta[id]?.title ?? id.replaceAll('-', ' '); }
 function formatDate(value: string) { return new Date(value).toLocaleString(); }
@@ -44,7 +46,8 @@ function whyMonad(ruleId: string) {
 function statusIcon(status: string) { return status === 'passed' ? '✓' : status === 'failed' ? '×' : '—'; }
 
 export function App() {
-  if (projectMode) return <><ProjectOnboarding /></>;
+  if (appSurface === 'public') return <PublicApp />;
+  if (appSurface === 'local') return <><ProjectOnboarding /></>;
   const [fixture, setFixture] = useState(debugMode ? fixtures[2].file : fixtures[0].file);
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState('');

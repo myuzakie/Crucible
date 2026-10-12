@@ -1187,14 +1187,16 @@ matrix check.
 
 #### M23.2 — Split PublicApp and LocalWorkspace
 
-Status: `TODO` | Depends: `M23.1` | Target files: `apps/web/src/App.tsx`,
+Status: `DONE` | Depends: `M23.1` | Target files: `apps/web/src/App.tsx`,
 new Web app/workspace components and tests only as needed.
 
 Tests: public root renders landing; local root renders workspace; fixture demo
 remains available; no localhost request from public mode.
 
 Done when: public and local experiences are separate entrypoints while existing
-workspace verification behavior is reused without core changes.
+workspace verification behavior is reused without core changes. Implemented
+with a minimal `PublicApp` placeholder, explicit build-mode surface selection,
+local reuse of `ProjectOnboarding`, and preserved public fixture query access.
 
 #### M23.3 — Canonical same-origin `/api/*`
 
