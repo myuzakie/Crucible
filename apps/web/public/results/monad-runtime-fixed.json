@@ -24,5 +24,19 @@
       { "findingId": "MND-FINALITY-001:fixed-runtime-demo:settlement", "ruleId": "MND-FINALITY-001", "journeyId": "settlement", "nodeId": "release-product", "status": "passed", "summary": "The irreversible action waited for the required assurance level.", "expected": "finalized", "observed": "finalized", "evidence": [{ "type": "assurance", "source": "fixture", "observed": "finalized", "expected": "finalized", "assuranceLevel": "finalized" }] },
       { "findingId": "MND-TIME-001:fixed-runtime-demo:auction", "ruleId": "MND-TIME-001", "journeyId": "auction", "nodeId": "bid", "status": "passed", "summary": "Timestamp progression was not assumed between adjacent blocks.", "expected": "current timestamp is greater than the previous timestamp", "observed": { "previousBlock": 501, "previousTimestamp": 1000, "currentBlock": 502, "currentTimestamp": 1001 }, "evidence": [{ "type": "block", "source": "fixture", "observed": { "number": 502, "timestamp": 1001 }, "blockNumber": 502, "blockTimestamp": 1001 }] }
     ]
+  },
+  "verifiedReplay": {
+    "status": "runtime-verified",
+    "beforeRunId": "monad-runtime-vulnerable",
+    "afterRunId": "monad-runtime-fixed",
+    "scenarioHash": "runtime-demo-scenario-v1",
+    "suiteVersion": "1.0.0",
+    "profile": "monad-core",
+    "ruleSetHash": "monad-core-rules-v1",
+    "diffSummary": {
+      "recoveredJourneys": ["new-user-purchase", "settlement", "auction"],
+      "failedBefore": 3,
+      "passedAfter": 3
+    }
   }
 }

@@ -37,7 +37,8 @@ import { privateKeyToAccount } from 'viem/accounts';
 
 import { isLocalTestCommand, localTestUsage } from './command-contract.js';
 import { startWebViewer } from './web.js';
-import { startLocalRunner } from './connect.js';
+import { startLocalWorkspaceServer } from './workspace-server.js';
+import { openBrowser } from './browser.js';
 import { formatTestnetResult, runMonadTestnetTest } from './testnet.js';
 import { isInteractive, printError, printHome, printPanel, printUrl, printUsage, readVersion, runInteractiveHome, startSpinner } from './ui.js';
 
@@ -282,16 +283,31 @@ try {
     const root = rest.includes('--root') ? resolve(flag(rest, '--root')) : process.cwd();
     const port = Number(flag(rest, '--port', '8787'));
     if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid --port. Use a number between 0 and 65535.');
-    const runner = await startLocalRunner({ root, name: rest.includes('--name') ? flag(rest, '--name') : undefined, host: rest.includes('--host') ? flag(rest, '--host') : undefined, port });
-    printPanel('CRUCIBLE LOCAL RUNNER', [
-      ['URL', runner.url],
-      ['Repository', runner.snapshot.project.root],
-      ['Status', runner.snapshot.detection.status],
-      ['Next', 'Connect this URL from the Crucible Web project screen.']
+    const workspace = await startLocalWorkspaceServer({ root, name: rest.includes('--name') ? flag(rest, '--name') : undefined, host: rest.includes('--host') ? flag(rest, '--host') : undefined, port });
+    printPanel('CRUCIBLE LOCAL WORKSPACE', [
+      ['URL', workspace.url],
+      ['Repository', workspace.snapshot.project.root],
+      ['Status', workspace.snapshot.detection.status],
+      ['Next', 'Open this URL in your browser.'],
+      ['Shutdown', 'Press Ctrl+C to stop the workspace.']
     ]);
-    const stop = async () => { await runner.close(); process.exit(0); };
+    let stopping = false;
+    const stop = async () => {
+      if (stopping) return;
+      stopping = true;
+      try {
+        await workspace.close();
+        process.exit(0);
+      } catch (error) {
+        printError(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    };
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
+    void openBrowser(workspace.url).catch(() => {
+      console.log(`Browser did not open automatically. Open this URL manually: ${workspace.url}`);
+    });
     await new Promise<void>(() => undefined);
   }
 

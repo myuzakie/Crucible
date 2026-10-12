@@ -13,12 +13,15 @@
     "test:smoke:monad": "node --env-file-if-exists=.env --import tsx scripts/smoke-monad.ts",
     "test:contracts": "forge test --root examples/monad-erc20-demo && forge test --root examples/monad-certificate-registry",
     "test:registry:local": "node --import tsx scripts/smoke-certificate-registry.ts",
-    "build": "tsc --noEmit && pnpm --filter @crucible/web build && pnpm web:check",
+    "build": "tsc --noEmit && pnpm --filter @crucible/web build:public && pnpm web:check",
     "cli:build": "pnpm --filter @ohmuzakie/crucible-cli build",
     "cli:pack": "pnpm --filter @ohmuzakie/crucible-cli pack",
+    "m23.6:check": "tsx scripts/m23-packed-acceptance.ts",
+    "m23.10:check": "tsx scripts/m23-external-acceptance.ts",
     "test:external": "tsx scripts/external-acceptance.ts",
     "m21d:check": "tsx scripts/m21d-check.ts",
     "web:check": "tsx scripts/web-deploy-check.ts",
+    "web:mode:check": "tsx scripts/web-mode-check.ts",
     "crucible": "tsx packages/cli/src/index.ts"
   },
   "devDependencies": {

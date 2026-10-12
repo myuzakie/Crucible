@@ -6,6 +6,25 @@ Mode default: fixture/offline
 
 Crucible menghubungkan perjalanan pengguna dengan bukti runtime. Hasilnya tidak hanya mengatakan “test pass”, tetapi menunjukkan node mana yang berjalan, finding apa yang gagal, evidence yang mendasarinya, dan apakah perubahan yang sama terbukti lewat replay.
 
+## M23 topology: public versus local
+
+Hosted [crucible-web-omega.vercel.app](https://crucible-web-omega.vercel.app)
+is the public landing page, deterministic interactive demo, and install/docs
+surface. Open `/demo` for the fixture story. It has no connected repository,
+does not execute developer code, and never requests `localhost`.
+
+The real product runs from the developer repository:
+
+```bash
+cd /path/to/your-dapp
+pnpm dlx @ohmuzakie/crucible-cli@latest connect --root .
+```
+
+The packed CLI starts Local Web and Local Runner together on
+`http://127.0.0.1:<port>/`. Local Web uses same-origin `/api/*`; execution,
+repository access, persistence, and keys remain local. Signing/private keys
+are environment-only runner inputs.
+
 ## Konteks Monad
 
 Monad tetap kompatibel dengan EVM dan RPC Ethereum, tetapi arsitekturnya memiliki karakteristik yang perlu dijelaskan dalam report:
@@ -32,15 +51,17 @@ M21-A menambahkan project workspace untuk repository lokal. Web tetap menjadi
 control plane; filesystem dan detector berjalan di local runner yang sengaja
 di-scope ke satu root repository.
 
-1. Jalankan public runner command dari root repository target:
+1. Jalankan canonical local workspace command dari root repository target:
 
    ```bash
    pnpm dlx @ohmuzakie/crucible-cli@latest connect --root .
    ```
 
-2. Jalankan Web, lalu buka halaman Projects.
-3. URL runner default adalah `http://127.0.0.1:8787`; gunakan **Advanced
-   settings** hanya jika runner memakai port atau host lain.
+2. `connect` otomatis menjalankan bundled Local Web dengan mode `local` dan
+   mencetak URL workspace. Buka URL tersebut; tidak perlu menjalankan Vite
+   atau terminal kedua.
+3. Normal Local Web memakai API same-origin `/api/*`; URL runner hanya diisi
+   melalui **Advanced settings** untuk development/legacy compatibility.
 4. Isi nama project, lalu klik **Connect & detect repository**.
 5. Baca status toolchain, jumlah artifact, scenario, dan next step pada panel
    **Repository detection**.
@@ -64,10 +85,13 @@ root Foundry atau direktori state yang keluar melalui symlink. Jangan memakai
 `--host 0.0.0.0` kecuali ada network boundary dan allowlist yang benar-benar
 terkontrol.
 
-Endpoint runner M21-A bersifat read-only: `/health`, `/project`, dan
-`/contracts`. Jika status
-menunjukkan `MISSING_ARTIFACT`, jalankan `forge build` di repository target,
-lalu reconnect. Jika `UNSUPPORTED_TOOLCHAIN`, repository belum memiliki
+Canonical Local Web paths adalah `/api/health`, `/api/project`,
+`/api/contracts`, `/api/journeys/compile`, `/api/runs`, `/api/replay`,
+`/api/passport`, `/api/passport/publish`, `/api/diagnose`, dan
+`/api/remediate`. Runner M21-A masih mempertahankan endpoint tanpa prefix
+sebagai compatibility surface untuk explicit development/legacy URL. Jika status menunjukkan
+`MISSING_ARTIFACT`, jalankan `forge build` di repository target, lalu
+reconnect. Jika `UNSUPPORTED_TOOLCHAIN`, repository belum memiliki
 `foundry.toml` yang didukung adapter saat ini.
 
 ### M21-B: Compile dan run journey
@@ -131,7 +155,7 @@ Fixture viewer tetap tersedia di `http://127.0.0.1:5173/` dan mode developer
 di `http://127.0.0.1:5173/?debug=1`.
 
 ```bash
-pnpm --filter @crucible/web dev --host 127.0.0.1
+pnpm --filter @crucible/web dev:public -- --host 127.0.0.1
 ```
 
 Buka `http://127.0.0.1:5173`. Halaman utama dimulai dari **Journeys**, bukan
@@ -189,7 +213,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm test:contracts
-pnpm --filter @crucible/web build
+pnpm --filter @crucible/web build:public
 pnpm web:check
 ```
 
