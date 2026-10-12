@@ -1,5 +1,12 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — Production Release QA: SPA Demo Route
+
+- Added the minimum Vercel rewrite from `/demo` to the public `index.html` so
+  direct navigation and refresh use the canonical deterministic demo route.
+- Extended `pnpm web:check` to fail if the production route contract is absent;
+  no API or static-asset paths are rewritten.
+
 ## 2026-10-13 — Post-Merge QA Fix: Public Replay Proof
 
 - Added the existing runtime-verified before/after replay summary to the fixed
