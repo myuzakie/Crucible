@@ -61,6 +61,23 @@ test('connect boots the bundled workspace and keeps the process alive', async ()
     child.kill('SIGINT');
     const exited = await waitForExit(child);
     assert.equal(exited.code, 0);
+
+    const second = spawn(process.execPath, ['--import', 'tsx', entrypoint, 'connect', '--root', root, '--port', new URL(url).port], {
+      cwd: repositoryRoot,
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    try {
+      const secondOutput = await waitForOutput(second, /Shutdown/);
+      const secondUrl = secondOutput.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
+      assert.equal(secondUrl, url);
+      assert.equal((await fetch(`${secondUrl}/api/health`)).status, 200);
+      second.kill('SIGTERM');
+      const secondExit = await waitForExit(second);
+      assert.equal(secondExit.code, 0);
+    } finally {
+      if (!second.killed) second.kill('SIGTERM');
+    }
   } finally {
     if (!child.killed) child.kill('SIGTERM');
     await rm(root, { recursive: true, force: true });

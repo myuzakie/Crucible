@@ -1,5 +1,13 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23.8 Browser Auto-Open and Shutdown Lifecycle
+
+- Added platform-aware browser opening for `connect`; failure is non-fatal and
+  leaves the workspace URL available for manual opening.
+- Made SIGINT/SIGTERM shutdown idempotent and verified server/port release by
+  restarting `connect` on the same port.
+- Added mocked browser success/failure and process lifecycle regression tests.
+
 ## 2026-10-13 — M23.7 Canonical `crucible connect`
 
 - Upgraded `connect --root .` to start the bundled Local Web workspace and

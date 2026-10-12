@@ -5,9 +5,9 @@ Last updated: 2026-10-13
 
 ## Agent resume state
 
-Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, M23.7`.
+Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, M23.7, M23.8`.
 Last merged to `main`: P9.5 release `9cfcf17`; P9.4 release `332cd24`; P9.3 release `5bb15d0`.
-Next action: `M23.8` — add browser auto-open and shutdown lifecycle handling; never use a personal wallet or paste keys into chat.
+Next action: `M23.9` — implement public landing and explicit `/demo`; never use a personal wallet or paste keys into chat.
 Current local environment: Node 24, pnpm 12.4.1, TypeScript, Zod, Foundry 1.8.5; root checks, `forge build/test`, and Anvil integration pass. Ensure `~/.foundry/bin` is on `PATH` for local Anvil tests.
 Blockchain tools: Foundry, forge, cast, and Anvil are installed. Local runner uses `http://127.0.0.1:8545` by default or `--rpc`/`LOCAL_RPC_URL`. `crucible test --local` spawns a fresh Anvil on an ephemeral port and kills it on exit.
 Memory rule: after every task update `PLAN.md`, `CHANGELOG.md`, and `FIX_LOG.md` when a bug or process miss occurred.
@@ -56,7 +56,7 @@ Local Web         -> actual developer workspace on the same localhost origin
                     http://127.0.0.1:<port>/api/*
 ```
 
-M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, and M23.7 are complete. The next active task is M23.8. Web builds now
+M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, M23.7, and M23.8 are complete. The next active task is M23.9. Web builds now
 require explicit `VITE_CRUCIBLE_MODE=public` or `VITE_CRUCIBLE_MODE=local`;
 missing and unknown values fail during Vite build/dev configuration loading.
 Public builds select a minimal `PublicApp` surface, while local builds reuse
@@ -71,8 +71,9 @@ package-local `web/` directory and exports the bundled workspace server, so
 external runtime does not resolve monorepo paths. Explicit runner URLs remain
 only as legacy/development compatibility overrides. `crucible connect --root .`
 now starts the bundled Local Web workspace and runner API on one localhost
-origin, prints the repository/status/URL/shutdown panel, and remains alive
-until stopped.
+origin, prints the repository/status/URL/shutdown panel, attempts a
+platform-safe browser open, falls back to the manual URL, and releases the
+port cleanly on SIGINT/SIGTERM.
 Local signing/private keys remain environment-only, and the local workspace
 remains localhost-only.
 

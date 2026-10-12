@@ -38,6 +38,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { isLocalTestCommand, localTestUsage } from './command-contract.js';
 import { startWebViewer } from './web.js';
 import { startLocalWorkspaceServer } from './workspace-server.js';
+import { openBrowser } from './browser.js';
 import { formatTestnetResult, runMonadTestnetTest } from './testnet.js';
 import { isInteractive, printError, printHome, printPanel, printUrl, printUsage, readVersion, runInteractiveHome, startSpinner } from './ui.js';
 
@@ -290,9 +291,23 @@ try {
       ['Next', 'Open this URL in your browser.'],
       ['Shutdown', 'Press Ctrl+C to stop the workspace.']
     ]);
-    const stop = async () => { await workspace.close(); process.exit(0); };
+    let stopping = false;
+    const stop = async () => {
+      if (stopping) return;
+      stopping = true;
+      try {
+        await workspace.close();
+        process.exit(0);
+      } catch (error) {
+        printError(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    };
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
+    void openBrowser(workspace.url).catch(() => {
+      console.log(`Browser did not open automatically. Open this URL manually: ${workspace.url}`);
+    });
     await new Promise<void>(() => undefined);
   }
 

@@ -1268,14 +1268,16 @@ and a persistent process lifecycle without browser auto-open.
 
 #### M23.8 — Browser auto-open and shutdown lifecycle
 
-Status: `TODO` | Depends: `M23.7` | Target files: CLI lifecycle/open-browser
-helper, CLI tests, platform-safe fallback docs.
+Status: `DONE` | Depends: `M23.7` | Target files: `packages/cli/src/browser.ts`,
+`index.ts`, lifecycle tests, platform-safe fallback docs.
 
 Tests: browser-open success/failure fallback; Ctrl+C releases server and port;
 second start can reuse the port; existing long-running CLI behavior remains.
 
 Done when: browser opens or prints a manual URL, and shutdown is clean on
-SIGINT/SIGTERM without orphaned server processes.
+SIGINT/SIGTERM without orphaned server processes. Implemented mocked browser
+success/failure coverage, non-fatal manual URL fallback, idempotent shutdown,
+and same-port restart acceptance.
 
 #### M23.9 — Public landing and `/demo`
 
