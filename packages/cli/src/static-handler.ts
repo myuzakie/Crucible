@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { extname, relative, resolve, sep } from 'node:path';
 
 export type StaticWebHandlerOptions = {
-  /** Production Web assets are supplied by a later packaging task. */
+  /** Production Web assets are supplied by the workspace server or later packaging tasks. */
   rootDir?: string;
   indexHtml?: string;
 };
@@ -48,19 +48,24 @@ export async function createStaticWebHandler(options: StaticWebHandlerOptions = 
 
   return async (request, response) => {
     if (request.method !== 'GET' && request.method !== 'HEAD') return false;
+    const rawPath = (request.url ?? '/').split('?', 1)[0] || '/';
+    let decodedRawPath: string;
     let pathname: string;
     try {
+      decodedRawPath = decodeURIComponent(rawPath);
       pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://127.0.0.1').pathname);
     } catch {
       return notFound(response);
     }
-    if (pathname.includes('\0') || pathname.includes('\\')) return notFound(response);
+    if (decodedRawPath.includes('\0') || decodedRawPath.includes('\\') || decodedRawPath.split('/').includes('..')) return notFound(response);
 
     const isIndex = pathname === '/' || pathname === '/index.html';
     const isAsset = pathname.startsWith('/assets/');
-    if (!isIndex && !isAsset) return false;
+    const isSpaRoute = !isIndex && !isAsset && !pathname.includes('.');
+    const isStaticFile = isIndex || isAsset || pathname.includes('.');
+    if (!isStaticFile && !isSpaRoute) return false;
     if (!rootDir) {
-      if (!isIndex) return notFound(response);
+      if (!isIndex && !isSpaRoute) return notFound(response);
       const body = Buffer.from(indexHtml, 'utf8');
       response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-length': String(body.byteLength), 'x-content-type-options': 'nosniff' });
       if (request.method === 'GET') response.end(body);
@@ -68,7 +73,7 @@ export async function createStaticWebHandler(options: StaticWebHandlerOptions = 
       return true;
     }
 
-    const relativePath = isIndex ? 'index.html' : pathname.slice(1);
+    const relativePath = isIndex || isSpaRoute ? 'index.html' : pathname.slice(1);
     const candidate = resolve(rootDir, relativePath);
     if (!isWithin(rootDir, candidate)) return notFound(response);
     let safeCandidate: string;

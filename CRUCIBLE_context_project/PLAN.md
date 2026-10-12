@@ -1228,13 +1228,16 @@ and `connect` lifecycle remain M23.5–M23.8 scope.
 
 #### M23.5 — Serve Local Web from workspace server
 
-Status: `TODO` | Depends: `M23.4` | Target files: local server/static asset
-serving code, Web build integration, server tests.
+Status: `DONE` | Depends: `M23.4` | Target files: `packages/cli/src/static-handler.ts`,
+`workspace-server.ts`, server tests, Local Web build output.
 
 Tests: `/` and assets serve; `/api/*` serves API; SPA nested-route reload
 falls back to `index.html`; missing assets remain 404.
 
 Done when: one localhost origin serves the real Local Web and runner API.
+Implemented Vite production output serving, public static files, extensionless
+SPA history fallback, API-first routing, missing-file 404s, and traversal-safe
+path handling. Published CLI asset packaging remains M23.6 scope.
 
 #### M23.6 — Bundle Web into CLI package
 

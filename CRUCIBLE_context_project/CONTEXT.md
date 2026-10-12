@@ -5,14 +5,18 @@ Last updated: 2026-10-13
 
 ## Agent resume state
 
-Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0, M23.1, M23.2, M23.3, M23.4`.
+Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0, M23.1, M23.2, M23.3, M23.4, M23.5`.
 Last merged to `main`: P9.5 release `9cfcf17`; P9.4 release `332cd24`; P9.3 release `5bb15d0`.
-Next action: `M23.5` — serve the Local Web build from the workspace server; never use a personal wallet or paste keys into chat.
+Next action: `M23.6` — bundle the Local Web build into the CLI package; never use a personal wallet or paste keys into chat.
 Current local environment: Node 24, pnpm 12.4.1, TypeScript, Zod, Foundry 1.8.5; root checks, `forge build/test`, and Anvil integration pass. Ensure `~/.foundry/bin` is on `PATH` for local Anvil tests.
 Blockchain tools: Foundry, forge, cast, and Anvil are installed. Local runner uses `http://127.0.0.1:8545` by default or `--rpc`/`LOCAL_RPC_URL`. `crucible test --local` spawns a fresh Anvil on an ephemeral port and kills it on exit.
 Memory rule: after every task update `PLAN.md`, `CHANGELOG.md`, and `FIX_LOG.md` when a bug or process miss occurred.
 
-Web state: `apps/web` is a Vite/React fixture viewer. It loads `public/results/*.json`; it must not hold private keys or call RPC. P4.1 was intentionally delivered fixture-first so UX can be tested before the runner exists.
+Web state: public `apps/web` remains a Vite/React deterministic fixture viewer
+and must not hold private keys or call RPC. Explicit local builds reuse
+`ProjectOnboarding` and now run from the workspace server with same-origin
+`/api/*` requests; the server serves the Vite production output without
+moving execution or secrets into the browser.
 
 M21-D state: the local runner can generate a signed Passport from a verified before/after replay, persist non-secret state under `crucible/results/m21d-state.json`, recover it through `GET /state`, and publish through `POST /passport/publish`. Passport signing and registry keys remain environment-only on the runner. The Web retries runner requests once and exposes generation/download/local publish controls only after `runtime-verified` replay.
 
@@ -52,7 +56,7 @@ Local Web         -> actual developer workspace on the same localhost origin
                     http://127.0.0.1:<port>/api/*
 ```
 
-M23.0, M23.1, M23.2, M23.3, and M23.4 are complete. The next active task is M23.5. Web builds now
+M23.0, M23.1, M23.2, M23.3, M23.4, and M23.5 are complete. The next active task is M23.6. Web builds now
 require explicit `VITE_CRUCIBLE_MODE=public` or `VITE_CRUCIBLE_MODE=local`;
 missing and unknown values fail during Vite build/dev configuration loading.
 Public builds select a minimal `PublicApp` surface, while local builds reuse
@@ -60,8 +64,10 @@ the existing `ProjectOnboarding` workspace. The public fixture query remains
 available for the transition until M23.9.
 Normal Local Web requests now use relative canonical `/api/*` paths through a
 single API client. The M23.4 workspace server composes a dedicated runner API
-handler with a static Web handler on one localhost origin; explicit runner URLs
-remain only as legacy/development compatibility overrides.
+handler with a static Web handler on one localhost origin; the Local Web
+production build now serves index, public files, Vite assets, and extensionless
+SPA routes from that origin. Explicit runner URLs remain only as
+legacy/development compatibility overrides.
 Local signing/private keys remain environment-only, and the local workspace
 remains localhost-only.
 

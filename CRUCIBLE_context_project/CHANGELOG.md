@@ -1,5 +1,14 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23.5 Serve Local Web from Workspace Server
+
+- Connected the workspace static handler to Vite production output so one
+  localhost origin serves `index.html`, Vite assets, and public Web files.
+- Added safe extensionless SPA history fallback while keeping missing assets
+  as 404 and routing `/api/*` to the runner API before static handling.
+- Verified the explicit `local` Web build against the workspace server; npm
+  tarball inclusion remains M23.6 scope.
+
 ## 2026-10-13 — M23.4 Local Workspace Server Abstraction
 
 - Extracted the runner API handler from `connect.ts` without changing runner
