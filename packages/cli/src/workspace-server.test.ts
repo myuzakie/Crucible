@@ -26,6 +26,8 @@ test('local workspace server composes localhost API and static handlers safely',
   await mkdir(join(staticRoot, 'results'), { recursive: true });
   await writeFile(join(staticRoot, 'index.html'), '<!doctype html><title>Local fixture</title>');
   await writeFile(join(staticRoot, 'assets', 'app.js'), 'window.fixture = true;');
+  await writeFile(join(staticRoot, '.env'), 'DEPLOYER_PRIVATE_KEY=secret');
+  await writeFile(join(staticRoot, 'signing.pem'), '-----BEGIN PRIVATE KEY-----');
   await writeFile(join(staticRoot, 'results', 'fixture.json'), '{"fixture":true}');
   await writeFile(join(root, 'outside.txt'), 'private repository file');
   await symlink(join(root, 'outside.txt'), join(staticRoot, 'assets', 'escape.js'));
@@ -67,6 +69,9 @@ test('local workspace server composes localhost API and static handlers safely',
 
     const symlinkResponse = await fetch(`${workspace.url}/assets/escape.js`);
     assert.equal(symlinkResponse.status, 404);
+
+    assert.equal((await fetch(`${workspace.url}/.env`)).status, 404);
+    assert.equal((await fetch(`${workspace.url}/signing.pem`)).status, 404);
   } finally {
     await workspace.close();
     assert.equal(workspace.server.listening, false);

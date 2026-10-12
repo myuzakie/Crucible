@@ -32,6 +32,36 @@ Regression test: `pnpm m23.10:check` passes the missing-scenario and unsupported
 toolchain external cases from a fresh temporary directory.
 Status: `fixed; verified`
 
+## FIX-028 — M21-D gate used an invalid implicit Web build mode
+
+Date: 2026-10-13
+Task: M23.11
+Symptom: `pnpm m21d:check` failed at its Web build step because it invoked
+`@crucible/web build` without `VITE_CRUCIBLE_MODE`.
+Root cause: M23.1 intentionally rejects missing Web modes, but the existing
+M21-D production gate still used the pre-M23 generic build command.
+Fix: use the explicit `build:public` command for the hosted Web gate.
+Files: `scripts/m21d-check.ts`.
+Regression test: `pnpm m21d:check` and `pnpm web:mode:check` pass with explicit
+public/local behavior and missing/invalid rejection.
+Status: `fixed; verified`
+
+## FIX-029 — Workspace static handler could expose secret-like files
+
+Date: 2026-10-13
+Task: M23.11
+Symptom: A custom static root containing `.env` or PEM/key material would have
+been served as a normal static file.
+Root cause: static safety checked traversal and symlinks but did not reject
+secret-like filenames.
+Fix: reject `.env` variants, PEM/key extensions, and private-key filenames
+before static resolution.
+Files: `packages/cli/src/static-handler.ts`,
+`packages/cli/src/workspace-server.test.ts`.
+Regression test: workspace server requests for `.env` and `signing.pem` return
+404; full M23 release gates pass.
+Status: `fixed; verified`
+
 ## FIX-026 — Unknown canonical API paths returned the wrong status
 
 Date: 2026-10-13  

@@ -36,6 +36,12 @@ function contentType(path: string): string {
   }
 }
 
+function isSensitivePath(pathname: string): boolean {
+  return pathname.split('/').some((segment) =>
+    segment === '.env' || segment.startsWith('.env.') || /(?:private[-_]?key|\.(?:pem|key))$/i.test(segment)
+  );
+}
+
 function notFound(response: ServerResponse): true {
   response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8', 'x-content-type-options': 'nosniff' });
   response.end('Not found');
@@ -57,7 +63,7 @@ export async function createStaticWebHandler(options: StaticWebHandlerOptions = 
     } catch {
       return notFound(response);
     }
-    if (decodedRawPath.includes('\0') || decodedRawPath.includes('\\') || decodedRawPath.split('/').includes('..')) return notFound(response);
+    if (decodedRawPath.includes('\0') || decodedRawPath.includes('\\') || decodedRawPath.split('/').includes('..') || isSensitivePath(pathname)) return notFound(response);
 
     const isIndex = pathname === '/' || pathname === '/index.html';
     const isAsset = pathname.startsWith('/assets/');

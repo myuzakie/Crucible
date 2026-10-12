@@ -1,5 +1,19 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — M23.11 Security, Persistence, and Full Regression Gate
+
+- Verified the complete M23 security boundary: Local Web binds to localhost,
+  public Web makes no localhost requests, Local Web uses same-origin `/api/*`,
+  traversal and project-root escapes are rejected, and secret-like static files
+  are not served.
+- Verified state recovery, browser-open fallback, clean Ctrl+C/SIGTERM
+  shutdown, port release/restart, environment-only signing keys, and existing
+  CLI command compatibility.
+- Passed frozen install, lint, typecheck, full tests, build, Web check,
+  Foundry contracts, judge/demo, M21-D, M23.6 packaging, and M23.10 packed
+  external acceptance. Fixed gate compatibility in `FIX-028` and static
+  secret-like file exposure in `FIX-029`.
+
 ## 2026-10-13 — M23.10 Packed External Repository Acceptance
 
 - Added `pnpm m23.10:check`, which packs and installs the CLI in a clean

@@ -1128,7 +1128,7 @@ when developing locally without confusing the demo route with a real project.
 
 ## M23 — Local-First Product Topology
 
-Status: `M23.0 DONE` | Active next task: `M23.1` | Branch: `feat/m23-local-first-topology`
+Status: `M23.11 DONE` | Active next task: `M23.12` | Branch: `feat/m23-local-first-topology`
 
 M23 is a topology/packaging refactor only. It must not change Scenario,
 RunResult, RuntimeFinding, Replay, Passport, Monad rules, Foundry adapter, or
@@ -1311,7 +1311,7 @@ unsupported-toolchain guidance, tarball hygiene, and clean shutdown.
 
 #### M23.11 — Security, persistence, and full regression
 
-Status: `TODO` | Depends: `M23.3`, `M23.5`, `M23.8`, `M23.10` | Target files:
+Status: `DONE` | Depends: `M23.3`, `M23.5`, `M23.8`, `M23.10` | Target files:
 security/persistence/regression scripts and relevant tests only.
 
 Tests: localhost bind, no public localhost calls, no secret/static `.env`
@@ -1320,7 +1320,14 @@ serving, state recovery after restart, `pnpm lint`, `pnpm typecheck`,
 `pnpm demo:check`, `pnpm m21d:check`, and `pnpm web:check`.
 
 Done when: security, persistence, existing CLI compatibility, and all required
-regression gates are green.
+regression gates are green. Verified localhost-only binding, public zero-
+localhost behavior, same-origin `/api/*`, traversal and secret-like static
+file rejection, project-root boundaries, environment-only signing keys,
+connect shutdown/restart, persistence recovery, and existing CLI command
+compatibility. Fixed the implicit Web build-mode gate in `FIX-028` and static
+secret-like file exposure in `FIX-029`. `pnpm install --frozen-lockfile`,
+lint, typecheck, full tests, Web build/check, Foundry contracts, judge/demo,
+M21-D, M23.6 packaging, and M23.10 packed external acceptance all passed.
 
 #### M23.12 — Documentation and release freeze
 
