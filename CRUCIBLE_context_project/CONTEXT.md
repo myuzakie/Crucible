@@ -1,13 +1,13 @@
 # CRUCIBLE — Project Context
 
-Status: `PHASE 3 — M23 Local-First Product Topology COMPLETE; Release Candidate / submission freeze`
+Status: `PHASE 3 — M23 COMPLETE; public production Web deployed; CLI publication blocked`
 Last updated: 2026-10-13
 
 ## Agent resume state
 
 Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, M23.7, M23.8, M23.9, M23.10, M23.11, M23.12`.
-Last merged to `main`: P9.5 release `9cfcf17`; P9.4 release `332cd24`; P9.3 release `5bb15d0`.
-Next action: `Release Candidate / submission freeze`; never use a personal wallet or paste keys into chat.
+Last merged to `main`: M23 public release promotion `4a4fb47` (PR #114); historical P9.5 release `9cfcf17`.
+Next action: `Authenticate the npm publisher, release the M23 CLI artifact, then submission/demo freeze`; never use a personal wallet or paste keys into chat.
 Current local environment: Node 24, pnpm 12.4.1, TypeScript, Zod, Foundry 1.8.5; root checks, `forge build/test`, and Anvil integration pass. Ensure `~/.foundry/bin` is on `PATH` for local Anvil tests.
 Blockchain tools: Foundry, forge, cast, and Anvil are installed. Local runner uses `http://127.0.0.1:8545` by default or `--rpc`/`LOCAL_RPC_URL`. `crucible test --local` spawns a fresh Anvil on an ephemeral port and kills it on exit.
 Memory rule: after every task update `PLAN.md`, `CHANGELOG.md`, and `FIX_LOG.md` when a bug or process miss occurred.
@@ -121,6 +121,15 @@ Post-merge QA fix state: `FIX-030` is verified. The public fixed deterministic
 fixture now includes the existing runtime-verified replay summary, and
 `pnpm demo:check` asserts the before/after linkage so the public demo visibly
 completes through Runtime Verified and Passport eligibility.
+
+Production release QA state: Vercel production now serves the M23 public build
+from main promotion `4a4fb47`. Real-browser checks passed for the public
+landing page, direct `/demo` navigation and refresh, failure/evidence/
+remediation, verified replay proof, and Runtime Passport eligibility. `FIX-031`
+is fixed and verified. The npm registry still serves `@ohmuzakie/crucible-cli`
+`0.2.2`, which predates M23 and has no bundled `web/` directory; npm
+authentication returned `401 Unauthorized`, so the published CLI release is
+the remaining release blocker. Local packed M23 acceptance remains green.
 
 AI state: `packages/ai` defines `DiagnosisRequestSchema`, `DiagnosisSchema`, and exact evidence validation against `RunResult`. `fixtures/diagnosis/buggy-mint.json` and `apps/web/public/diagnosis/buggy-mint.json` are deterministic offline cache. Web keeps the RunResult visible when diagnosis is unavailable.
 

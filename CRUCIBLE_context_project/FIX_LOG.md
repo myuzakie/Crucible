@@ -48,7 +48,7 @@ the rewrite contract.
 Files: `vercel.json`, `scripts/web-deploy-check.ts`.
 Regression test: `pnpm web:check`, full CI, and production browser direct-load
 and refresh checks after redeployment.
-Status: `fixed; awaiting production redeploy`
+Status: `fixed; verified`
 
 ## FIX-027 — Packed acceptance JSON included exec failure text
 
