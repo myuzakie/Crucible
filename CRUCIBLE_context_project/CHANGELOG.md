@@ -1,5 +1,21 @@
 # CRUCIBLE — Change Log
 
+## 2026-10-13 — Production CLI Release 0.3.0
+
+- Published the immutable M23 CLI artifact `@ohmuzakie/crucible-cli@0.3.0`
+  with `latest` pointing to the registry release.
+- Verified the package tarball contains the CLI executable, bundled Local Web,
+  assets, and required deterministic fixtures without project-memory files,
+  secrets, or monorepo-relative runtime dependencies.
+- Downloaded the published package through npm in a fresh external Foundry
+  repository and verified `connect`, bundled root, same-origin `/api/health`,
+  `/api/project`, Contract Explorer, run/evidence, replay, Runtime Passport,
+  persistence, clean shutdown, and same-port restart.
+- Verified published-package `detect`, `doctor`, and `test`; existing
+  `scenario create`, `web`, and `run` command surfaces remain available.
+- No Scenario, RunResult, RuntimeFinding, Replay, Passport, Monad, Foundry
+  adapter, or runtime verification semantics were changed for the release.
+
 ## 2026-10-13 — Production Release QA: SPA Demo Route
 
 - Added the minimum Vercel rewrite from `/demo` to the public `index.html` so

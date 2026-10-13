@@ -1128,7 +1128,7 @@ when developing locally without confusing the demo route with a real project.
 
 ## M23 — Local-First Product Topology
 
-Status: `M23 DONE` | Active next task: `Release Candidate / submission freeze` | Branch: `feat/m23-local-first-topology`
+Status: `M23 DONE` | Active next task: `Submission + Demo + Pitch preparation` | Branch: `feat/m23-local-first-topology`
 
 M23 is a topology/packaging refactor only. It must not change Scenario,
 RunResult, RuntimeFinding, Replay, Passport, Monad rules, Foundry adapter, or

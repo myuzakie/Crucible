@@ -1,13 +1,13 @@
 # CRUCIBLE — Project Context
 
-Status: `PHASE 3 — M23 COMPLETE; public production Web deployed; CLI publication blocked`
+Status: `PHASE 3 — M23 COMPLETE; production Web and CLI 0.3.0 released`
 Last updated: 2026-10-13
 
 ## Agent resume state
 
 Last completed: `P0.0–P8.1, P9.1–P9.5, P10.1–P10.5, P10.5-U1–U5, P10.6–P10.10, P10.11–P10.16, P10.17–P10.24, M21-B, M21-C, M21-D, M21-A UX follow-up, M23.0, M23.1, M23.2, M23.3, M23.4, M23.5, M23.6, M23.7, M23.8, M23.9, M23.10, M23.11, M23.12`.
 Last merged to `main`: M23 public release promotion `4a4fb47` (PR #114); historical P9.5 release `9cfcf17`.
-Next action: `Authenticate the npm publisher, release the M23 CLI artifact, then submission/demo freeze`; never use a personal wallet or paste keys into chat.
+Next action: `Submission + Demo + Pitch preparation`; feature development is frozen. Never use a personal wallet or paste keys into chat.
 Current local environment: Node 24, pnpm 12.4.1, TypeScript, Zod, Foundry 1.8.5; root checks, `forge build/test`, and Anvil integration pass. Ensure `~/.foundry/bin` is on `PATH` for local Anvil tests.
 Blockchain tools: Foundry, forge, cast, and Anvil are installed. Local runner uses `http://127.0.0.1:8545` by default or `--rpc`/`LOCAL_RPC_URL`. `crucible test --local` spawns a fresh Anvil on an ephemeral port and kills it on exit.
 Memory rule: after every task update `PLAN.md`, `CHANGELOG.md`, and `FIX_LOG.md` when a bug or process miss occurred.
@@ -112,10 +112,17 @@ are not promoted in new documentation.
 M23 release-gate result: public/local builds, full tests, Foundry contracts,
 judge/demo, M21-D, Web security checks, packed CLI acceptance, external
 repository connect/run/evidence, unsupported-toolchain guidance, persistence,
-and clean shutdown/restart all passed. Real limitations remain: Hardhat is
+and clean shutdown/restart all passed. The immutable package
+`@ohmuzakie/crucible-cli@0.3.0` is published on npm and was downloaded from
+the registry for fresh external-repository acceptance. Real limitations remain: Hardhat is
 detected but unsupported by the current Foundry adapter, live Monad execution
 requires explicit environment configuration, and Passport publishing is not
 the public hosted critical path.
+
+Production release state: npm `latest` resolves to `@ohmuzakie/crucible-cli@0.3.0`;
+the registry package contains the CLI executable and bundled Local Web and has
+passed external `connect`, same-origin API, replay, Passport, persistence, and
+port-restart acceptance. Existing power-user command meanings remain unchanged.
 
 Post-merge QA fix state: `FIX-030` is verified. The public fixed deterministic
 fixture now includes the existing runtime-verified replay summary, and
