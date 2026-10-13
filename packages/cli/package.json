@@ -1,7 +1,7 @@
 {
   "name": "@ohmuzakie/crucible-cli",
   "private": false,
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
   "bin": {
     "crucible": "dist/index.js"
